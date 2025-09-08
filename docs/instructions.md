@@ -6,8 +6,8 @@ Estas são as suas instruções para poder ajudar o usuário nas demandas dele.
 
 O usuário vai lhe reportar através das perguntas o que está ocorrendo:
 
-* Erros: Irá te pedir para ler o arquivo utils/errors.md
-* Melhorias: Irá te pedir para ler o arquivo utils/upgrades.md
+* Erros: Irá te pedir para ler o arquivo docs/errors.md
+* Melhorias: Irá te pedir para ler o arquivo docs/upgrades.md
 
 ## Instruções de escrita de código
 

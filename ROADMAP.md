@@ -12,12 +12,10 @@ que estará externo a este projeto.
     
     Criar um código que automatize a busca de textos no ElasticSearch;
     Tratamento do texto das postagens em formato legível;
-    Armazenamento em banco de dados dos textos vetorizados, para consulta posterior.
 
 ### Tecnologias a serem utilizadas:
 
     Vetorização de texto: SentenceTransformers - HuggingFace
-    Armazenamento de vetores: PostgreSQL 16.9 com extensão para vetores
 
 Elaborar a partir das referências obtidas dos blogs, textos em linguagem natural.
 Tarefas:
@@ -30,7 +28,6 @@ Tarefas:
 
 Tecnologias a serem utilizadas:
 
-    Consulta de vetores armazenados no banco de dados PostgreSQL: psycopg2
     Armazenamento em cache dos vetores obtidos: Redis
     Interface de input: Streamlit
     Contexto de prompt: Core do Python

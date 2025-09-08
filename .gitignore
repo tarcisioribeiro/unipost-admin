@@ -154,3 +154,5 @@ cython_debug/
 .flake8
 claude/
 data/
+.claude/
+flake_errors.txt
