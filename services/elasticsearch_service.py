@@ -6,11 +6,12 @@ from Elasticsearch to be used as context for text generation.
 """
 
 from typing import List, Dict, Any, Optional
-from elasticsearch import Elasticsearch, exceptions
 import streamlit as st
-# from sentence_transformers import SentenceTransformer
+import time
+import requests
+import json
 
-from ..config.settings import settings
+from config.settings import settings
 
 
 class ElasticsearchService:
@@ -23,43 +24,24 @@ class ElasticsearchService:
 
     def __init__(self) -> None:
         """Initialize the Elasticsearch service."""
-        self.client = self._create_client()
-        # self.model = SentenceTransformer(
-        #     'sentence-transformers/all-MiniLM-L6-v2')
+        self.es_url = settings.elasticsearch_url
+        self.username = settings.elasticsearch_username
+        self.password = settings.elasticsearch_password
         self.index_name = "unipost_content"
+        self.session = requests.Session()
+        
+        # Configure session with authentication
+        if self.username and self.password:
+            self.session.auth = (self.username, self.password)
 
-    def _create_client(self) -> Optional[Elasticsearch]:
-        """
-        Create Elasticsearch client with authentication.
-
-        Returns
-        -------
-        Optional[Elasticsearch]
-            Configured Elasticsearch client or None if connection fails
-        """
+    def _make_request(self, method: str, endpoint: str, **kwargs) -> Optional[requests.Response]:
+        """Make authenticated request to Elasticsearch."""
         try:
-            if settings.elasticsearch_username and settings.elasticsearch_password:
-                client = Elasticsearch(
-                    settings.elasticsearch_url,
-                    basic_auth=(
-                        settings.elasticsearch_username,
-                        settings.elasticsearch_password
-                    ),
-                    verify_certs=False,
-                    ssl_show_warn=False
-                )
-            else:
-                client = Elasticsearch(settings.elasticsearch_url)
-
-            # Test connection
-            if client.ping():
-                return client
-            else:
-                st.error("Falha ao conectar com Elasticsearch")
-                return None
-
+            url = f"{self.es_url}/{endpoint.lstrip('/')}"
+            response = self.session.request(method, url, timeout=30, **kwargs)
+            return response
         except Exception as e:
-            st.error(f"Erro na configuração do Elasticsearch: {str(e)}")
+            st.error(f"Erro na requisição ao Elasticsearch: {str(e)}")
             return None
 
     def search_content(
@@ -79,9 +61,6 @@ class ElasticsearchService:
         List[Dict[str, Any]]
             List of matching documents with metadata
         """
-        if not self.client:
-            return []
-
         try:
             search_body = {
                 "query": {
@@ -98,26 +77,34 @@ class ElasticsearchService:
                     }
                 },
                 "size": size,
-                "_source": ["title", "content", "timestamp", "tags", "source"]
+                "_source": ["title", "content", "timestamp", "tags", "source", "category"]
             }
 
-            response = self.client.search(
-                index=self.index_name,
-                body=search_body
+            response = self._make_request(
+                "POST", 
+                f"{self.index_name}/_search",
+                headers={"Content-Type": "application/json"},
+                data=json.dumps(search_body)
             )
 
+            if not response or response.status_code != 200:
+                st.error(f"Erro na busca: {response.status_code if response else 'No response'}")
+                return []
+
+            data = response.json()
             results = []
-            for hit in response["hits"]["hits"]:
+            
+            for hit in data.get("hits", {}).get("hits", []):
                 result = {
-                    "score": hit["_score"],
-                    "source": hit["_source"],
+                    "score": hit.get("_score", 0),
+                    "source": hit.get("_source", {}),
                     "highlight": hit.get("highlight", {})
                 }
                 results.append(result)
 
             return results
 
-        except exceptions.ElasticsearchException as e:
+        except Exception as e:
             st.error(f"Erro na busca do Elasticsearch: {str(e)}")
             return []
 
@@ -137,48 +124,9 @@ class ElasticsearchService:
         List[Dict[str, Any]]
             List of similar documents based on vector similarity
         """
-        if not self.client:
-            return []
-
-        try:
-            # Generate query vector
-            query_vector = self.model.encode(query).tolist()
-
-            search_body = {
-                "query": {
-                    "script_score": {
-                        "query": {
-                            "match_all": {}},
-                        "script": {
-                            "source": "cosineSimilarity(params.query_vector, 'content_vector') + 1.0",
-                            "params": {
-                                "query_vector": query_vector}}}},
-                "size": size,
-                "_source": [
-                    "title",
-                    "content",
-                    "timestamp",
-                            "tags",
-                    "source"]}
-
-            response = self.client.search(
-                index=self.index_name,
-                body=search_body
-            )
-
-            results = []
-            for hit in response["hits"]["hits"]:
-                result = {
-                    "score": hit["_score"],
-                    "source": hit["_source"]
-                }
-                results.append(result)
-
-            return results
-
-        except exceptions.ElasticsearchException as e:
-            st.error(f"Erro na busca vetorial: {str(e)}")
-            return []
+        # Placeholder implementation - vector search disabled for now
+        # TODO: Implement proper vector search with sentence transformers
+        return []
 
     def get_context_for_topic(self, topic: str) -> str:
         """
@@ -194,11 +142,10 @@ class ElasticsearchService:
         str
             Formatted context string from search results
         """
-        # Combine text and vector search results
-        text_results = self.search_content(topic, size=3)
-        vector_results = self.vector_search(topic, size=2)
+        # Use only text search results for now
+        text_results = self.search_content(topic, size=5)
 
-        all_results = text_results + vector_results
+        all_results = text_results
 
         if not all_results:
             return ""
@@ -231,10 +178,8 @@ class ElasticsearchService:
         bool
             True if connected, False otherwise
         """
-        if not self.client:
-            return False
-
         try:
-            return self.client.ping()
+            response = self._make_request("GET", "_cluster/health")
+            return response is not None and response.status_code == 200
         except Exception:
             return False

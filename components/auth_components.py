@@ -8,7 +8,7 @@ including login forms and session state management.
 import streamlit as st
 from typing import Optional, Dict, Any
 
-from ..services.auth_service import AuthService
+from services.auth_service import AuthService
 
 
 class LoginForm:

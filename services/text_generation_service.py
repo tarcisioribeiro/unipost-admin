@@ -11,8 +11,8 @@ import streamlit as st
 from datetime import datetime
 
 from config.settings import settings
-from services.elasticsearch_service import ElasticsearchService
-from services.redis_service import RedisService
+from .elasticsearch_service import ElasticsearchService
+from .redis_service import RedisService
 
 
 class TextGenerationService:
@@ -32,8 +32,8 @@ class TextGenerationService:
     def generate_text(
         self,
         topic: str,
-        model: str = None,
-        user_token: str = None
+        model: Optional[str] = None,
+        user_token: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Generate text content based on topic and context.
@@ -214,7 +214,7 @@ TEXTO:
 
         return "\n\n".join(context_parts)
 
-    def approve_text(self, text_id: str, user_token: str) -> bool:
+    def approve_text(self, text_id: str, user_token: Optional[str]) -> bool:
         """
         Approve a generated text via webhook.
 
@@ -232,7 +232,7 @@ TEXTO:
         """
         return self._update_text_status(text_id, True, user_token)
 
-    def reject_text(self, text_id: str, user_token: str) -> bool:
+    def reject_text(self, text_id: str, user_token: Optional[str]) -> bool:
         """
         Reject a generated text via webhook.
 

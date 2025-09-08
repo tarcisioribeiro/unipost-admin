@@ -11,7 +11,7 @@ import jwt
 from datetime import datetime
 import streamlit as st
 
-from ..config.settings import settings
+from config.settings import settings
 
 
 class AuthService:
@@ -52,13 +52,19 @@ class AuthService:
             }
 
             response = self.session.post(
-                f"{self.base_url}/api/auth/login/",
+                f"{self.base_url}/api/v1/authentication/token/",
                 json=auth_data,
                 timeout=10
             )
 
             if response.status_code == 200:
-                return response.json()
+                auth_data = response.json()
+                # Convert JWT response format to expected format
+                return {
+                    "token": auth_data.get("access"),
+                    "refresh_token": auth_data.get("refresh"),
+                    "user": {"username": username}  # Basic user info
+                }
             else:
                 st.error(f"Falha na autenticação: {response.status_code}")
                 return None
@@ -93,10 +99,9 @@ class AuthService:
                     return False
 
             # Validate with Django API
-            headers = {"Authorization": f"Bearer {token}"}
-            response = self.session.get(
-                f"{self.base_url}/api/auth/verify/",
-                headers=headers,
+            response = self.session.post(
+                f"{self.base_url}/api/v1/authentication/token/verify/",
+                json={"token": token},
                 timeout=5
             )
 
@@ -122,7 +127,7 @@ class AuthService:
         try:
             headers = {"Authorization": f"Bearer {token}"}
             response = self.session.get(
-                f"{self.base_url}/api/auth/user/",
+                f"{self.base_url}/api/v1/user/permissions/",
                 headers=headers,
                 timeout=5
             )
@@ -151,7 +156,7 @@ class AuthService:
         try:
             headers = {"Authorization": f"Bearer {token}"}
             response = self.session.post(
-                f"{self.base_url}/api/auth/logout/",
+                f"{self.base_url}/api/v1/authentication/logout/",
                 headers=headers,
                 timeout=5
             )
