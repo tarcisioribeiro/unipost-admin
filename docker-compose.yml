@@ -1,59 +1,24 @@
 services:
-  unipost-app:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: unipost-streamlit
     ports:
-      - "8501:8501"
+      - "8555:8555"
     environment:
       - DJANGO_API_URL=${DJANGO_API_URL}
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD}
+      - ELASTICSEARCH_URL=${ES_HOST}
+      - ELASTICSEARCH_USERNAME=${ES_USER}
+      - ELASTICSEARCH_PASSWORD=${ES_PASS}
       - REDIS_URL=redis://redis:6379/0
     depends_on:
-      elasticsearch:
-        condition: service_healthy
       redis:
         condition: service_started
     volumes:
       - .:/app
     networks:
       - unipost-network
-
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: unipost-elasticsearch
-    environment:
-      - node.name=elasticsearch
-      - cluster.name=unipost-cluster
-      - discovery.type=single-node
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
-      - xpack.security.enabled=true
-      - xpack.security.http.ssl.enabled=false
-      - xpack.security.transport.ssl.enabled=false
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-      - ./elasticsearch/init:/usr/share/elasticsearch/init
-    ports:
-      - "9200:9200"
-      - "9300:9300"
-    networks:
-      - unipost-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTICSEARCH_PASSWORD} http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 40s
-    entrypoint: ["/usr/share/elasticsearch/init/entrypoint.sh"]
 
   redis:
     image: redis:7-alpine
@@ -65,22 +30,6 @@ services:
     networks:
       - unipost-network
     command: redis-server --appendonly yes
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.0
-    container_name: unipost-kibana
-    ports:
-      - "5601:5601"
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD}
-      - XPACK_SECURITY_ENABLED=true
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    networks:
-      - unipost-network
 
   redis-commander:
     image: rediscommander/redis-commander:latest
@@ -95,7 +44,6 @@ services:
       - unipost-network
 
 volumes:
-  elasticsearch_data:
   redis_data:
 
 networks:

@@ -7,9 +7,9 @@ from Elasticsearch to be used as context for text generation.
 
 from typing import List, Dict, Any, Optional
 import streamlit as st
-import time
 import requests
 import json
+from sentence_transformers import SentenceTransformer
 
 from config.settings import settings
 
@@ -24,28 +24,34 @@ class ElasticsearchService:
 
     def __init__(self) -> None:
         """Initialize the Elasticsearch service."""
-        self.es_url = settings.elasticsearch_url
-        self.username = settings.elasticsearch_username
-        self.password = settings.elasticsearch_password
+        self.es_url = settings.es_host
+        self.username = settings.es_user
+        self.password = settings.es_pass
         self.index_name = "unipost_content"
         self.session = requests.Session()
-        
+        self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
+
         # Configure session with authentication
         if self.username and self.password:
             self.session.auth = (self.username, self.password)
 
-    def _make_request(self, method: str, endpoint: str, **kwargs) -> Optional[requests.Response]:
+    def _make_request(
+        self, method: str, endpoint: str, **kwargs
+    ) -> Optional[requests.Response]:
         """Make authenticated request to Elasticsearch."""
         try:
             url = f"{self.es_url}/{endpoint.lstrip('/')}"
-            response = self.session.request(method, url, timeout=30, **kwargs)
+            response = self.session.request(
+                method, url, timeout=30, **kwargs
+            )
             return response
         except Exception as e:
             st.error(f"Erro na requisição ao Elasticsearch: {str(e)}")
             return None
 
     def search_content(
-            self, query: str, size: int = 10) -> List[Dict[str, Any]]:
+        self, query: str, size: int = 10
+    ) -> List[Dict[str, Any]]:
         """
         Search for content using text query.
 
@@ -77,23 +83,29 @@ class ElasticsearchService:
                     }
                 },
                 "size": size,
-                "_source": ["title", "content", "timestamp", "tags", "source", "category"]
+                "_source": [
+                    "title", "content", "timestamp",
+                    "tags", "source", "category"
+                ]
             }
 
             response = self._make_request(
-                "POST", 
+                "POST",
                 f"{self.index_name}/_search",
                 headers={"Content-Type": "application/json"},
                 data=json.dumps(search_body)
             )
 
             if not response or response.status_code != 200:
-                st.error(f"Erro na busca: {response.status_code if response else 'No response'}")
+                error_msg = (
+                    response.status_code if response else 'No response'
+                )
+                st.error(f"Erro na busca: {error_msg}")
                 return []
 
             data = response.json()
             results = []
-            
+
             for hit in data.get("hits", {}).get("hits", []):
                 result = {
                     "score": hit.get("_score", 0),
@@ -124,9 +136,61 @@ class ElasticsearchService:
         List[Dict[str, Any]]
             List of similar documents based on vector similarity
         """
-        # Placeholder implementation - vector search disabled for now
-        # TODO: Implement proper vector search with sentence transformers
-        return []
+        try:
+            # Generate query embedding
+            query_embedding = self.sentence_model.encode(query).tolist()
+
+            # Elasticsearch vector search query
+            search_body = {
+                "size": size,
+                "query": {
+                    "script_score": {
+                        "query": {"match_all": {}},
+                        "script": {
+                            "source": ("cosineSimilarity(params.query_vector, "
+                                       "'content_vector') + 1.0"),
+                            "params": {"query_vector": query_embedding}
+                        }
+                    }
+                },
+                "_source": ["title", "content", "url", "timestamp"],
+                "highlight": {
+                    "fields": {
+                        "content": {
+                            "fragment_size": 150,
+                            "number_of_fragments": 3
+                        }
+                    }
+                }
+            }
+
+            # Execute the search
+            url = f"{self.es_url}/{self.index_name}/_search"
+            response = self.session.post(
+                url,
+                headers={"Content-Type": "application/json"},
+                json=search_body,
+                timeout=30
+            )
+            response.raise_for_status()
+
+            # Parse results
+            search_result = response.json()
+            results = []
+
+            for hit in search_result.get("hits", {}).get("hits", []):
+                result = {
+                    "score": hit.get("_score", 0),
+                    "source": hit.get("_source", {}),
+                    "highlight": hit.get("highlight", {})
+                }
+                results.append(result)
+
+            return results
+
+        except Exception as e:
+            st.error(f"Erro na busca vetorial do Elasticsearch: {str(e)}")
+            return []
 
     def get_context_for_topic(self, topic: str) -> str:
         """

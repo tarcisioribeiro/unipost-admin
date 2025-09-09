@@ -1,0 +1,391 @@
+/* UniPost - Estilos personalizados inspirados na Universidade Marketplaces */
+
+:root {
+    --primary-blue: #1e3a8a;
+    --secondary-blue: #3b82f6;
+    --light-blue: #dbeafe;
+    --dark-navy: #252d4a;
+    --white: #ffffff;
+    --light-gray: #f8fafc;
+    --medium-gray: #64748b;
+    --dark-gray: #334155;
+    --success-green: #10b981;
+    --warning-yellow: #f59e0b;
+    --error-red: #ef4444;
+    --accent-blue: #0ea5e9;
+}
+
+/* Configurações globais */
+.stApp {
+    background: linear-gradient(135deg, var(--light-gray) 0%, var(--white) 100%);
+}
+
+/* Sidebar customizada */
+.css-1d391kg {
+    background: linear-gradient(180deg, var(--primary-blue) 0%, var(--dark-navy) 100%);
+}
+
+/* Títulos principais */
+h1, h2, h3 {
+    color: var(--primary-blue);
+    font-weight: 700;
+}
+
+/* Botões primários */
+.stButton > button[kind="primary"] {
+    background: linear-gradient(45deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+    border: none;
+    border-radius: 8px;
+    color: var(--white);
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+}
+
+.stButton > button[kind="primary"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(30, 58, 138, 0.4);
+}
+
+/* Botões secundários */
+.stButton > button:not([kind="primary"]) {
+    background: var(--white);
+    border: 2px solid var(--secondary-blue);
+    border-radius: 8px;
+    color: var(--secondary-blue);
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.stButton > button:not([kind="primary"]):hover {
+    background: var(--light-blue);
+    transform: translateY(-1px);
+}
+
+/* Cartões de métricas */
+.metric-card {
+    background: var(--white);
+    border: 1px solid var(--light-blue);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.1);
+    transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(30, 58, 138, 0.15);
+}
+
+/* Inputs e selectboxes */
+.stSelectbox > div > div {
+    border: 2px solid var(--light-blue);
+    border-radius: 8px;
+    background: var(--white);
+}
+
+.stTextInput > div > div > input {
+    border: 2px solid var(--light-blue);
+    border-radius: 8px;
+    background: var(--white);
+}
+
+.stTextInput > div > div > input:focus,
+.stSelectbox > div > div:focus-within {
+    border-color: var(--secondary-blue);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Sidebar navigation */
+.sidebar-nav {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+/* Cards de status */
+.status-approved {
+    background: linear-gradient(45deg, var(--success-green), #22c55e);
+    color: var(--white);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 12px;
+    display: inline-block;
+}
+
+.status-pending {
+    background: linear-gradient(45deg, var(--warning-yellow), #fbbf24);
+    color: var(--white);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 12px;
+    display: inline-block;
+}
+
+.status-rejected {
+    background: linear-gradient(45deg, var(--error-red), #f87171);
+    color: var(--white);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 12px;
+    display: inline-block;
+}
+
+/* Container de conteúdo gerado */
+.generated-content {
+    background: linear-gradient(135deg, var(--white) 0%, var(--light-blue) 100%);
+    border-left: 4px solid var(--primary-blue);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 16px 0;
+    font-size: 16px;
+    line-height: 1.6;
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.1);
+}
+
+/* Headers customizados */
+.custom-header {
+    background: linear-gradient(45deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+    color: var(--white);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+}
+
+/* Login form container */
+.login-container {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: 0 8px 32px rgba(30, 58, 138, 0.2);
+    border: 1px solid var(--light-blue);
+}
+
+/* Text cards */
+.text-card {
+    background: var(--white);
+    border: 1px solid var(--light-blue);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 16px 0;
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.1);
+    transition: all 0.3s ease;
+    min-height: 320px;
+    overflow: hidden;
+}
+
+.text-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(30, 58, 138, 0.15);
+}
+
+/* Expanded text cards */
+.text-card.expanded {
+    height: auto;
+    min-height: 400px;
+}
+
+/* Copy text area */
+.copy-text-area {
+    background: var(--light-gray);
+    border: 1px solid var(--light-blue);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+/* Action buttons */
+.action-button {
+    background: var(--white);
+    border: 2px solid var(--secondary-blue);
+    border-radius: 8px;
+    color: var(--secondary-blue);
+    font-weight: 600;
+    transition: all 0.3s ease;
+    padding: 8px 16px;
+    margin: 4px;
+}
+
+.action-button:hover {
+    background: var(--light-blue);
+    transform: translateY(-1px);
+}
+
+.action-button.approve {
+    border-color: var(--success-green);
+    color: var(--success-green);
+}
+
+.action-button.approve:hover {
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.action-button.reject {
+    border-color: var(--error-red);
+    color: var(--error-red);
+}
+
+.action-button.reject:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.action-button.copy {
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+.action-button.copy:hover {
+    background: rgba(14, 165, 233, 0.1);
+}
+
+/* Platform badges */
+.platform-facebook {
+    background: linear-gradient(45deg, #1877f2, #42a5f5);
+    color: var(--white);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.platform-instagram {
+    background: linear-gradient(45deg, #e4405f, #f93b79);
+    color: var(--white);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.platform-tiktok {
+    background: linear-gradient(45deg, #000000, #333333);
+    color: var(--white);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.platform-linkedin {
+    background: linear-gradient(45deg, #0077b5, #0099cc);
+    color: var(--white);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Divider personalizado */
+.custom-divider {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--secondary-blue), transparent);
+    margin: 24px 0;
+}
+
+/* Spinner/Loading customizado */
+.stSpinner > div {
+    border-color: var(--secondary-blue) transparent var(--secondary-blue) transparent;
+}
+
+/* Success/Error messages */
+.stSuccess {
+    background: linear-gradient(45deg, var(--success-green), #22c55e);
+    border-radius: 8px;
+    color: var(--white);
+}
+
+.stError {
+    background: linear-gradient(45deg, var(--error-red), #f87171);
+    border-radius: 8px;
+    color: var(--white);
+}
+
+/* Info messages */
+.stInfo {
+    background: linear-gradient(45deg, var(--accent-blue), #38bdf8);
+    border-radius: 8px;
+    color: var(--white);
+}
+
+/* Warning messages */
+.stWarning {
+    background: linear-gradient(45deg, var(--warning-yellow), #fbbf24);
+    border-radius: 8px;
+    color: var(--white);
+}
+
+/* Service status indicators */
+.service-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    margin: 4px 0;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .login-container {
+        padding: 24px;
+    }
+    
+    .text-card {
+        height: auto;
+        min-height: 280px;
+    }
+    
+    .generated-content {
+        padding: 16px;
+        font-size: 14px;
+    }
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--light-gray);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--secondary-blue);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-blue);
+}

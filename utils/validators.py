@@ -271,7 +271,7 @@ def validate_environment_config() -> Tuple[bool, List[str]]:
     # Check required configurations
     required_configs = [
         ("django_api_url", settings.django_api_url),
-        ("elasticsearch_url", settings.elasticsearch_url),
+        ("elasticsearch_url", settings.es_host),
         ("redis_url", settings.redis_url),
         ("secret_key", settings.secret_key)
     ]

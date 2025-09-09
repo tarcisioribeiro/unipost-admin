@@ -1,0 +1,17 @@
+[theme]
+# Tema claro baseado nas cores da Universidade Marketplaces
+base = "light"
+primaryColor = "#1e3a8a"          # Azul principal
+backgroundColor = "#ffffff"        # Fundo branco
+secondaryBackgroundColor = "#f8fafc"  # Cinza claro para elementos secundários
+textColor = "#334155"             # Texto principal em cinza escuro
+
+[server]
+# Configurações do servidor
+headless = true
+port = 8555
+address = "0.0.0.0"
+
+[browser]
+# Configurações do navegador
+gatherUsageStats = false

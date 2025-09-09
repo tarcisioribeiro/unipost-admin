@@ -8,73 +8,30 @@ Este é um report de erro, vou detalha-lo para que possa entender mais precisame
 
 ---
 
-Erro na página de Dashboard ao clicar em gerar novo texto:
+Erro ao tentar acessar:
 
-streamlit.errors.StreamlitAPIException: st.session_state.current_page cannot be modified after the widget with key current_page is instantiated.
-
+pydantic_core._pydantic_core.ValidationError: 3 validation errors for Settings es_host Extra inputs are not permitted [type=extra_forbidden, input_value='https://elastic:9200', input_type=str] For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden es_user Extra inputs are not permitted [type=extra_forbidden, input_value='elastic', input_type=str] For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden es_pass Extra inputs are not permitted [type=extra_forbidden, input_value='orrARDrdr27!', input_type=str] For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
 Traceback:
-File "/app/app.py", line 491, in <module>
-    app.run()
-File "/app/app.py", line 48, in run
-    self._render_main_app()
-File "/app/app.py", line 85, in _render_main_app
-    self._render_dashboard()
-File "/app/app.py", line 146, in _render_dashboard
-    st.session_state.current_page = "Geração de Textos"
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-File "/usr/local/lib/python3.11/site-packages/streamlit/runtime/metrics_util.py", line 443, in wrapped_func
-    result = non_optional_func(*args, **kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-File "/usr/local/lib/python3.11/site-packages/streamlit/runtime/state/session_state_proxy.py", line 136, in __setattr__
-    self[key] = value
-    ~~~~^^^^^
-File "/usr/local/lib/python3.11/site-packages/streamlit/runtime/metrics_util.py", line 443, in wrapped_func
-    result = non_optional_func(*args, **kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-File "/usr/local/lib/python3.11/site-packages/streamlit/runtime/state/session_state_proxy.py", line 114, in __setitem__
-    get_session_state()[key] = value
-    ~~~~~~~~~~~~~~~~~~~^^^^^
-File "/usr/local/lib/python3.11/site-packages/streamlit/runtime/state/safe_session_state.py", line 109, in __setitem__
-    self._state[key] = value
-    ~~~~~~~~~~~^^^^^
-File "/usr/local/lib/python3.11/site-packages/streamlit/runtime/state/session_state.py", line 533, in __setitem__
-    raise StreamlitAPIException(
-
-Erro ao clicar em Ver Texto na página de Dashboard:
-
-streamlit.errors.StreamlitAPIException: st.session_state.current_page cannot be modified after the widget with key current_page is instantiated.
-
-Traceback:
-File "/app/app.py", line 491, in <module>
-    app.run()
-File "/app/app.py", line 48, in run
-    self._render_main_app()
-File "/app/app.py", line 85, in _render_main_app
-    self._render_dashboard()
-File "/app/app.py", line 151, in _render_dashboard
-    st.session_state.current_page = "Visualização de Textos"
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-File "/usr/local/lib/python3.11/site-packages/streamlit/runtime/metrics_util.py", line 443, in wrapped_func
-    result = non_optional_func(*args, **kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-File "/usr/local/lib/python3.11/site-packages/streamlit/runtime/state/session_state_proxy.py", line 136, in __setattr__
-    self[key] = value
-    ~~~~^^^^^
-File "/usr/local/lib/python3.11/site-packages/streamlit/runtime/metrics_util.py", line 443, in wrapped_func
-    result = non_optional_func(*args, **kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-File "/usr/local/lib/python3.11/site-packages/streamlit/runtime/state/session_state_proxy.py", line 114, in __setitem__
-    get_session_state()[key] = value
-    ~~~~~~~~~~~~~~~~~~~^^^^^
-File "/usr/local/lib/python3.11/site-packages/streamlit/runtime/state/safe_session_state.py", line 109, in __setitem__
-    self._state[key] = value
-    ~~~~~~~~~~~^^^^^
-File "/usr/local/lib/python3.11/site-packages/streamlit/runtime/state/session_state.py", line 533, in __setitem__
-    raise StreamlitAPIException(
-
-Erro ao conectar ao ElasticSearch
-
-Preciso que esse erro não aconteça, pois preciso testar a busca de vetores no ES.
+File "/app/app.py", line 9, in <module>
+    from components.auth_components import AuthStateManager, LoginForm
+File "/app/components/__init__.py", line 3, in <module>
+    from .auth_components import LoginForm, AuthStateManager
+File "/app/components/auth_components.py", line 11, in <module>
+    from services.auth_service import AuthService
+File "/app/services/__init__.py", line 3, in <module>
+    from .auth_service import AuthService
+File "/app/services/auth_service.py", line 14, in <module>
+    from config.settings import settings
+File "/app/config/__init__.py", line 3, in <module>
+    from .settings import settings
+File "/app/config/settings.py", line 98, in <module>
+    settings = Settings()
+               ^^^^^^^^^^
+File "/usr/local/lib/python3.11/site-packages/pydantic_settings/main.py", line 188, in __init__
+    super().__init__(
+File "/usr/local/lib/python3.11/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ---
 

@@ -32,11 +32,8 @@ class LoginForm:
         bool
             True if authentication successful, False otherwise
         """
-        st.markdown("## 🔐 UniPOST - Login")
-        st.markdown("---")
 
         with st.form("login_form"):
-            st.markdown("### Entre com suas credenciais")
 
             username = st.text_input(
                 "👤 Usuário",

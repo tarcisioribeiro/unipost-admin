@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # Django API Configuration
     django_api_url: str = Field(
-        default="http://localhost:8000",
+        default="http://127.0.0.1:8005",
         description="Base URL for Django API"
     )
 
@@ -34,17 +34,17 @@ class Settings(BaseSettings):
     )
 
     # Elasticsearch Configuration
-    elasticsearch_url: str = Field(
-        default="http://localhost:9200",
+    es_host: str = Field(
+        default="http://127.0.0.1:9200",
         description="Elasticsearch cluster URL"
     )
 
-    elasticsearch_username: str = Field(
+    es_user: str = Field(
         default="elastic",
         description="Elasticsearch username"
     )
 
-    elasticsearch_password: Optional[str] = Field(
+    es_pass: Optional[str] = Field(
         default=None,
         description="Elasticsearch password"
     )
@@ -68,7 +68,7 @@ class Settings(BaseSettings):
 
     # Text Generation Settings
     default_model: str = Field(
-        default="gpt-3.5-turbo",
+        default="gpt-4o-mini",
         description="Default text generation model"
     )
 
@@ -78,8 +78,14 @@ class Settings(BaseSettings):
     )
 
     temperature: float = Field(
-        default=0.7,
+        default=0.1,
         description="Temperature for text generation"
+    )
+
+    # OpenAI API Configuration
+    openai_api_key: Optional[str] = Field(
+        default=None,
+        description="OpenAI API key for direct GPT access"
     )
 
     class Config:
