@@ -1,53 +1,94 @@
-# 📝 UniPost - Sistema de Geração de Posts com IA
+# 📝 UniPost - Sistema Inteligente de Geração de Posts com IA
 
-Sistema inteligente para geração automática de posts para redes sociais utilizando Inteligência Artificial, com interface moderna em Streamlit, autenticação segura e sistema de temas claro/escuro.
+Sistema avançado para geração automática de posts para redes sociais utilizando Inteligência Artificial, com interface moderna em Streamlit, autenticação segura, sistema de busca semântica e cache inteligente.
 
 ## 🚀 Características Principais
 
-- **🤖 Geração de Posts IA**: Criação de conteúdo para múltiplas plataformas sociais
-- **🔐 Autenticação Segura**: Sistema de login com sessão persistente
-- **🎨 Temas Dinâmicos**: Interface com temas claro e escuro
-- **⚙️ Configurações Avançadas**: Painel completo de configurações do sistema
-- **📊 Dashboard Interativo**: Visão geral com métricas e status dos serviços
-- **💾 Cache Inteligente**: Sistema de cache Redis para otimização
-- **🔄 Sistema de Aprovação**: Workflow para aprovar/rejeitar posts gerados
+- **🤖 Geração Inteligente de Posts**: IA avançada com OpenAI GPT para múltiplas plataformas sociais
+- **🔍 Busca Semântica**: ElasticSearch para encontrar conteúdos relacionados automaticamente
+- **🧠 Vetorização com SentenceTransformers**: Análise semântica profunda dos textos
+- **⚡ Cache Redis**: Sistema de cache inteligente para otimização de performance
+- **🔐 Autenticação JWT**: Login seguro integrado com API Django
+- **📊 Dashboard Analytics**: Métricas detalhadas, gráficos interativos e insights automáticos
+- **🎯 Sistema de Aprovação**: Workflow completo para gerenciar posts gerados
+- **❓ Sistema de Ajuda**: Manual interativo integrado na sidebar da aplicação
+- **🌐 Multi-Plataforma**: Suporte para Facebook, Instagram, TikTok e LinkedIn
+- **🔧 Configurações Avançadas**: Personalização completa da experiência do usuário
 
-## 🏗️ Arquitetura
+## 🏗️ Arquitetura do Sistema
 
 ```
-├── app.py                 # Ponto de entrada da aplicação
-├── components/           # Componentes reutilizáveis
-│   ├── auth_components.py    # Login e autenticação
-│   └── text_components.py    # Geração e exibição de texto
-├── pages/                # Páginas da aplicação
-│   ├── dashboard.py          # Dashboard principal
-│   ├── post_generator.py     # Geração de posts
-│   ├── posts_viewer.py       # Visualização de posts
-│   └── settings.py           # Configurações do sistema
-├── services/             # Serviços de integração
-│   ├── auth_service.py       # Autenticação e JWT
-│   ├── text_generation_service.py  # IA para geração
-│   ├── redis_service.py      # Cache Redis
-│   └── elasticsearch_service.py    # Busca contextual
-├── utils/                # Utilitários e validadores
-├── config/               # Configurações da aplicação
-├── static/               # CSS customizado para temas
-├── .streamlit/           # Configurações do Streamlit
-├── docker-compose.yml    # Orquestração de containers
-├── Dockerfile           # Container da aplicação
-└── requirements.txt     # Dependências Python
+UniPost/
+├── app.py                          # 🚀 Ponto de entrada principal
+├── api/                           # 🔗 Integração com API Django
+│   ├── __init__.py
+│   ├── login.py                   # Sistema de autenticação
+│   └── token.py                   # Gerenciamento de JWT tokens
+├── home/                          # 🏠 Página inicial e navegação
+│   └── main.py                    # Menu principal com sistema de ajuda
+├── dashboard/                     # 📊 Analytics e métricas
+│   └── main.py                    # Dashboard com gráficos interativos
+├── texts/                         # 🤖 Geração e gerenciamento de textos
+│   ├── __init__.py
+│   ├── main.py                    # Interface principal de geração IA
+│   └── request.py                 # Requisições para API
+├── services/                      # ⚙️ Serviços core do sistema
+│   ├── __init__.py
+│   ├── elasticsearch_service.py   # Busca semântica avançada
+│   ├── redis_service.py           # Cache inteligente de vetores
+│   └── text_generation_service.py # IA e vetorização
+├── dictionary/                    # 📚 Configurações e dados
+│   └── vars.py                    # Constantes, plataformas e manual de ajuda
+├── references/                    # 🔧 Utilitários e funções auxiliares
+│   └── functions.py
+├── style/                         # 🎨 Estilos e temas visuais
+│   └── custom.css                 # CSS customizado
+├── .streamlit/                    # ⚙️ Configurações do Streamlit
+├── venv/                          # 🐍 Ambiente virtual Python
+├── docs/                          # 📖 Documentação do projeto
+│   ├── build.md
+│   ├── errors.md
+│   ├── instructions.md
+│   └── upgrade.md
+├── docker-compose.yml             # 🐳 Orquestração de containers
+├── Dockerfile                     # 🐳 Container da aplicação
+└── requirements.txt               # 📦 Dependências Python
 ```
 
-## 🛠️ Tecnologias Utilizadas
+## 🛠️ Stack Tecnológico
 
-- **Frontend**: Streamlit 1.49.1 com interface responsiva
-- **Backend**: Django API (externo) via JWT
-- **IA/ML**: OpenAI GPT, SentenceTransformers, HuggingFace
-- **Cache**: Redis 7-alpine para alta performance
-- **Busca**: Elasticsearch (opcional)
-- **Containerização**: Docker & Docker Compose
-- **Estilização**: CSS customizado com temas claro/escuro
-- **Desenvolvimento**: MyPy, Flake8, Autopep8
+### 🎨 Frontend & Interface
+- **Streamlit 1.49.1**: Interface web moderna e responsiva
+- **CSS Customizado**: Temas claro/escuro com design profissional
+- **Plotly**: Gráficos interativos no dashboard (Express & Graph Objects)
+- **st.dialog**: Sistema de diálogos modais para ajuda integrada
+
+### 🤖 Inteligência Artificial & Machine Learning
+- **OpenAI GPT-4o-mini**: Geração de texto com qualidade profissional
+- **SentenceTransformers (all-MiniLM-L6-v2)**: Vetorização semântica de textos
+- **HuggingFace Transformers**: Pipeline completo de processamento de linguagem natural
+- **NumPy & SciPy**: Operações matemáticas para similaridade de vetores
+
+### 🔍 Busca & Cache
+- **Elasticsearch 9.1.0**: Busca semântica avançada e indexação de conteúdo
+- **Redis 7-alpine**: Cache inteligente de vetores com expiração automática
+- **Similaridade Coseno**: Algoritmo para encontrar conteúdos relacionados
+
+### 🔐 Backend & API
+- **Django API (externa)**: Autenticação, CRUD e gerenciamento de dados
+- **JWT (PyJWT 2.8.0)**: Tokens seguros para autenticação stateless
+- **Requests**: Cliente HTTP para integração com APIs externas
+
+### 🐳 DevOps & Containerização
+- **Docker & Docker Compose**: Orquestração de containers
+- **Redis Commander**: Interface web para monitoramento do cache
+- **Health Checks**: Monitoramento automático dos serviços
+
+### 🔧 Desenvolvimento & Qualidade
+- **MyPy 1.17.1**: Type checking estático
+- **Flake8 7.3.0**: Linting e verificação de código
+- **Autopep8 2.3.2**: Formatação automática seguindo PEP 8
+- **Python-dotenv**: Gerenciamento de variáveis de ambiente
 
 ## 📋 Pré-requisitos
 
@@ -105,90 +146,168 @@ docker compose down -v && docker compose up --build -d
 - **Aplicação Principal**: http://localhost:8555
 - **Redis Commander**: http://localhost:8081
 
-## 📱 Funcionalidades
+## 📱 Funcionalidades Detalhadas
 
-### 🔐 Autenticação
-- Login seguro com usuário e senha
-- Validação via API Django com JWT
-- Gerenciamento de sessão persistente
-- Logout seguro com limpeza de dados
+### 🔐 Sistema de Autenticação Segura
+- **Login JWT**: Autenticação via tokens seguros da API Django
+- **Sessão Persistente**: Mantenha-se logado durante todo o uso
+- **Controle de Permissões**: Acesso diferenciado baseado em roles
+- **Logout Seguro**: Limpeza completa de dados da sessão
+- **Validação em Tempo Real**: Verificação contínua do token
 
-### 📊 Dashboard
-- Visão geral do sistema com métricas
-- Status dos serviços em tempo real
-- Informações do sistema e versão
-- Ações rápidas de navegação
+### 📊 Dashboard Analytics Avançado
+- **Métricas Principais**: Total de posts, taxa de aprovação, distribuição por plataforma
+- **Gráficos Interativos**: Pizza, barras e linha temporal com Plotly
+- **Insights Automáticos**: Análises inteligentes dos padrões de conteúdo
+- **Resumo Detalhado**: Tabelas com estatísticas por plataforma e período
+- **Restrições de Acesso**: Interface adaptada conforme permissões do usuário
 
-### 🎯 Geração de Posts
-- Interface intuitiva para criação de conteúdo
-- Suporte a múltiplas plataformas (Facebook, Instagram, TikTok, LinkedIn)
-- Integração com OpenAI GPT para IA avançada
-- Visualização em tempo real do conteúdo gerado
+### 🤖 Geração Inteligente de Conteúdo
+#### Fluxo Completo de IA:
+1. **Busca Automática**: ElasticSearch encontra conteúdos relacionados
+2. **Vetorização Semântica**: SentenceTransformers analisa significado dos textos
+3. **Cache Inteligente**: Redis armazena vetores para performance otimizada
+4. **Similaridade Contextual**: Algoritmo coseno identifica referências relevantes
+5. **Geração via LLM**: OpenAI GPT cria conteúdo baseado no contexto
+6. **Salvamento Automático**: Post registrado na API com metadata completo
 
-### 📚 Visualização de Posts
-- Grid responsivo para exibição de posts
-- Filtros por status e plataforma
-- Sistema de aprovação/rejeição
-- Busca e organização de conteúdo
+#### Configurações Avançadas:
+- **Plataformas**: Facebook, Instagram, TikTok, LinkedIn com otimização específica
+- **Tom de Linguagem**: 8 opções (informal, formal, educativo, técnico, etc.)
+- **Nível de Criatividade**: 6 níveis de originalidade
+- **Tamanho Customizável**: Curto, médio ou longo
+- **Hashtags Inteligentes**: Inclusão automática de tags relevantes
+- **Call-to-Action**: Chamadas para ação personalizadas
 
-### ⚙️ Configurações Avançadas
-- **Temas**: Alternância entre claro e escuro
-- **Preferências**: Auto-refresh, itens por página
-- **Sistema**: Debug mode, timeout de API
-- **Cache**: Gerenciamento e limpeza
-- **Sessão**: Reinicialização e exportação de configs
+### 📚 Biblioteca de Posts Avançada
+- **Filtros Múltiplos**: Status, palavra-chave, data e plataforma
+- **Cards Informativos**: Preview completo com metadata
+- **Sistema de Aprovação**: Workflow completo (aprovar/reprovar/regenerar)
+- **Status Visual**: Códigos de cores e ícones intuitivos
+- **Paginação Inteligente**: Navegação otimizada para grandes volumes
+- **Busca Semântica**: Encontre posts por contexto, não apenas palavras exatas
+
+### ❓ Sistema de Ajuda Integrado
+- **Dialog Modal**: Interface elegante sem sair da aplicação
+- **Manual Interativo**: 10 seções detalhadas de funcionalidades
+- **Instruções Contextuais**: Dicas específicas para cada ferramenta
+- **Acesso Rápido**: Botão na sidebar sempre disponível
+- **Conteúdo Atualizado**: Documentação sincronizada com features
+
+### ⚙️ Configurações e Personalização
+- **Temas Visuais**: Modo claro/escuro com CSS otimizado
+- **Preferências de Interface**: Auto-refresh, timeout, itens por página
+- **Debug Mode**: Logs detalhados para troubleshooting
+- **Gerenciamento de Cache**: Limpeza e monitoramento do Redis
+- **Exportação de Configurações**: Backup das preferências do usuário
 
 ## 🏠 Estrutura das Páginas
 
-### Dashboard Principal (`dashboard.py`)
-- Métricas do sistema e estatísticas
-- Status dos serviços (Redis, API, Streamlit)
-- Informações de versão e cache
-- Navegação rápida entre funcionalidades
+### Página Inicial (`home/main.py`)
+- **Menu Principal**: Navegação intuitiva entre Dashboard e Geração de Conteúdo
+- **Painel do Usuário**: Informações de login e permissões
+- **❓ Sistema de Ajuda**: Botão integrado na sidebar com manual interativo
+- **Logout Seguro**: Encerramento de sessão com limpeza de dados
 
-### Geração de Posts (`post_generator.py`)
-- Formulário para criação de posts
-- Seleção de plataformas sociais
-- Configuração de parâmetros de IA
-- Aprovação/rejeição de conteúdo gerado
+### Dashboard Analytics (`dashboard/main.py`)
+- **Métricas Principais**: Total, aprovados, pendentes e plataformas
+- **Gráficos Plotly**: Pizza (status), barras (plataformas) e timeline (evolução)
+- **Insights Automáticos**: Análises inteligentes dos padrões
+- **Restrições**: Interface adaptada para superusuários e permissões
+- **Tabelas Resumo**: Estatísticas detalhadas por plataforma e período
 
-### Visualização de Posts (`posts_viewer.py`)
-- Grid de 5 colunas responsivo
-- Filtros por status e palavra-chave
-- Ações em lote para posts
-- Histórico completo de posts
+### Geração de Posts (`texts/main.py`)
+- **Interface Dual**: Parâmetros (esquerda) e resultado (direita)
+- **Formulário Inteligente**: Tema, plataforma, tom, criatividade
+- **Processo IA Transparente**: Barra de progresso com etapas detalhadas
+- **Ações Completas**: Aprovar, reprovar, regenerar, copiar, limpar
+- **Modo Regeneração**: Carregamento automático de dados de posts existentes
 
-### Configurações (`settings.py`)
-- **Temas**: Claro/escuro com preview
-- **Preferências**: Configurações de usuário
-- **Sistema**: Informações e monitoramento
-- **Avançadas**: Debug, timeout, ações de sistema
+### Biblioteca de Posts (`texts/main.py` - método render)
+- **Cards Informativos**: Layout elegante com preview e metadata
+- **Filtros Avançados**: Status, palavra-chave com busca em tempo real
+- **Sistema de Ações**: Botões contextuais para cada post
+- **Paginação**: Exibição otimizada para grandes volumes
+- **Cores Semânticas**: Verde (aprovado), amarelo (pendente)
 
 ## 🔧 Configuração de Desenvolvimento
+
+## ❓ Sistema de Ajuda Integrado
+
+### Implementação do Manual Interativo
+
+O UniPost agora inclui um sistema de ajuda completo integrado na sidebar:
+
+#### Localização: `home/main.py` 
+```python
+@st.dialog("❓ Manual de Uso - UniPost")
+def show_help_dialog(self):
+    # Dialog modal elegante com st.selectbox para navegar entre tópicos
+```
+
+#### Configuração: `dictionary/vars.py`
+```python
+HELP_MENU = {
+    "🏠 Página Inicial": "...",      # Instruções da tela inicial
+    "📊 Dashboard": "...",            # Como usar analytics
+    "🤖 Geração de Conteúdo": "...", # Manual da IA
+    "📚 Biblioteca de Posts": "...",  # Gerenciamento de posts
+    "🔐 Sistema de Login": "...",     # Autenticação e permissões
+    "⚙️ Configurações Avançadas": "...", # Personalização
+    "🧠 Inteligência Artificial": "...", # Como funciona a IA
+    "🔍 Busca e Filtros": "...",     # Sistema de busca
+    "📈 Métricas e Analytics": "...", # Interpretação de dados
+}
+```
+
+#### Características:
+- **Acesso Imediato**: Botão `❓ Ajuda` sempre visível na sidebar
+- **Dialog Modal**: Interface elegante sem sair da aplicação
+- **10 Seções Detalhadas**: Cobertura completa de todas as funcionalidades
+- **Navegação Intuitiva**: st.selectbox para alternar entre tópicos
+- **Conteúdo Rico**: Instruções detalhadas com dicas práticas
+- **Design Responsivo**: Interface adaptada para diferentes dispositivos
 
 ### Estrutura de Serviços
 
 ```python
 # Principais serviços implementados
-- AuthService: Autenticação JWT com Django API
-- TextGenerationService: Geração de IA com OpenAI/local
-- RedisService: Cache de alta performance
-- ElasticsearchService: Busca contextual (opcional)
+services/
+├── elasticsearch_service.py    # Busca semântica com multi_match queries
+├── redis_service.py            # Cache inteligente com hash MD5 e TTL
+├── text_generation_service.py  # Pipeline IA: vetorização → similaridade → LLM
+└── __init__.py
+
+# Fluxo de dados dos serviços
+1. ElasticSearch → busca conteúdos relacionados
+2. SentenceTransformers → vetorização semântica  
+3. Redis → cache de vetores processados
+4. OpenAI GPT → geração contextualizada
+5. Django API → persistência e CRUD
 ```
 
 ### Componentes Principais
 
 ```python
-# Componentes de UI implementados
-- AuthStateManager: Gerenciamento de sessão
-- LoginForm: Formulário de autenticação
-- TextGenerator: Interface de geração
-- PostsViewer: Visualizador de posts
+# Arquitetura modular implementada
+api/
+├── login.py          # AuthenticationService integrado
+├── token.py          # JWTManager com validação contínua
+└── __init__.py
 
-# Validadores disponíveis
-- validate_topic: Validação de temas
-- validate_credentials: Credenciais de usuário
-- validate_content: Conteúdo gerado
+home/
+└── main.py           # HomePage com HelpSystem integrado
+
+dashboard/
+└── main.py           # Dashboard com Plotly analytics
+
+texts/
+├── main.py           # TextGenerator com IA pipeline
+├── request.py        # APIClient para CRUD operations
+└── __init__.py
+
+dictionary/
+└── vars.py           # Constants, PLATFORMS, HELP_MENU
 ```
 
 ## 📊 Monitoramento

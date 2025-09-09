@@ -1,6 +1,10 @@
 from elasticsearch import Elasticsearch
 from typing import List, Dict
+from dotenv import load_dotenv
+import os
 import logging
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -11,22 +15,31 @@ class ElasticsearchService:
     Responsável pela busca automática de textos.
     """
 
-    def __init__(self, host: str = 'localhost', port: int = 9200):
+    def __init__(self):
         """
-        Inicializa o cliente ElasticSearch.
-
-        Parameters
-        ----------
-        host : str
-            Host do ElasticSearch
-        port : int
-            Porta do ElasticSearch
+        Inicializa o cliente ElasticSearch usando configurações do .env.
         """
         try:
-            self.client = Elasticsearch(
-                [{'host': host, 'port': port, 'scheme': 'http'}]
-            )
-            logger.info(f"ElasticSearch client initialized: {host}:{port}")
+            es_host = os.getenv('ES_HOST')
+            es_user = os.getenv('ES_USER')
+            es_pass = os.getenv('ES_PASS')
+
+            if es_host and es_user:
+                # Configuração para ElasticSearch Cloud/remoto com autenticação
+                self.client = Elasticsearch(
+                    [es_host],
+                    basic_auth=(es_user, es_pass) if es_pass else None,
+                    verify_certs=True if 'https' in es_host else False,
+                    ssl_show_warn=False
+                )
+                logger.info(f"ElasticSearch client initialized: {es_host}")
+            else:
+                # Fallback para configuração local
+                self.client = Elasticsearch(
+                    [{'host': 'localhost', 'port': 9200, 'scheme': 'http'}]
+                )
+                logger.info("ElasticSearch client initialized: localhost:9200")
+
         except Exception as e:
             logger.error(f"Error initializing ElasticSearch client: {e}")
             self.client = None

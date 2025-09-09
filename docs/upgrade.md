@@ -4,20 +4,16 @@ Este é um pedido de upgrade, vou detalha-lo para que possa entender mais precis
 
 ---
 
-Faça uma varredura do projeto e verifique se ainda há algo a implementar, algo marcado como TODO.
-Se houver, implemente ou corrija o que estiver pendente.
+Preciso que a tela de **Dashboards** seja melhorada.  
 
-Remova do docker compose o Elastic Search local, adaptando o código para refletir as configurações que coloquei no arquivo .env, que agora armazena dados de um Elastic Search externo.
-
-Se ainda houver alguma menção a variável de ambiente DJANGO_API_TOKEN, remova-a e adapte o código que a use para usar os dados obtidos a partir da url de autorização.
-
-Se não houver uso da variável de ambiente SECRET_KEY, remova-a e adate/corrija o código onde ela é mencionada.
+* Traduza campos das tabeêas que estejam sendo exibidos em inglês.
+* Melhore o visua
 
 ---
 
-## Pós correção
+## Pós upgrade
 
-Após corrigir o problema:
+Após isso:
 
   * Ative o venv, e execute o comando abaixo para detectar problemas de sintaxe:
 
@@ -27,7 +23,7 @@ Após corrigir o problema:
 
   * Caso não haja como corrigir com o autopep8, encontre outra forma de corrigir.
 
-  * Em seguida, faça uma varredura do arquivo com o mypy 'nome_do_arquivo'.py, para verificar se a tipagem está adequada.
+  * Em seguida, faça uma varredura do arquivo com o mypy, para verificar se a tipagem está adequada.
 
   * Rode o comando flake acima novamente, para garantir que não há sintaxe ruim.
 

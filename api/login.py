@@ -72,7 +72,7 @@ class Login:
             col1, col2, col3 = st.columns([1, 2, 1])
 
             with col2:
-                st.subheader("🔐 Acesso ao Sistema")
+                st.subheader("🔑 Login")
 
                 with st.form("login_form", clear_on_submit=False):
                     username = st.text_input(
@@ -81,7 +81,7 @@ class Login:
                         help="Entre com suas credenciais de acesso"
                     )
                     password = st.text_input(
-                        "🔒 Senha",
+                        ":unlock: Senha",
                         type="password",
                         placeholder="Digite sua senha",
                         help="Digite sua senha de acesso"
@@ -123,7 +123,7 @@ class Login:
                 <div style="text-align: center; margin-top: 30px;
                     color: #888;">
                     <h4>
-                        🤖 Melhorado por IA • 🔒 Acesso Seguro<br>
+                        🤖 Melhorado por IA • 🔐 Acesso Seguro<br>
                         Entre em contato com o administrador para obter acesso
                     </h4>
                 </div>

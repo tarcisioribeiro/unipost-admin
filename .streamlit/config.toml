@@ -1,11 +1,11 @@
 [theme]
 # Tema moderno e profissional para UniPost AI
 base = "light"
-primaryColor = "#1f77b4"          # Azul moderno e acessível
-backgroundColor = "#ffffff"        # Fundo branco puro
-secondaryBackgroundColor = "#f8f9fa"  # Cinza muito claro para cards e elementos
-textColor = "#333333"             # Texto escuro para boa legibilidade
-font = "sans serif"               # Fonte limpa e moderna
+primaryColor = "#1f77b4"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f8f9fa"
+textColor = "#333333"
+font = "sans serif"
 
 [server]
 # Configurações do servidor
