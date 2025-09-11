@@ -2,7 +2,7 @@ import redis
 import json
 import hashlib
 from datetime import datetime
-from typing import Dict, Optional, List
+from typing import Dict, Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class RedisService:
     """
     Serviço para interação com Redis.
-    Responsável pelo armazenamento em cache dos vetores consultados.
+    Responsável pelo armazenamento em cache dos embeddings obtidos via API.
     """
 
     def __init__(self, host: str = 'localhost', port: int = 6379, db: int = 0):
@@ -40,22 +40,19 @@ class RedisService:
             logger.error(f"Error initializing Redis client: {e}")
             self.client = redis.Redis()
 
-    def cache_vectors(self,
-                      query: str,
-                      vectors: List[List[float]],
-                      texts: List[str],
-                      expiration: int = 86400):
+    def cache_embeddings(self,
+                         query: str,
+                         embeddings_data: Dict,
+                         expiration: int = 86400):
         """
-        Armazena vetores no cache Redis.
+        Armazena embeddings obtidos via API no cache Redis.
 
         Parameters
         ----------
         query : str
             Query original
-        vectors : List[List[float]]
-            Lista de vetores
-        texts : List[str]
-            Textos correspondentes
+        embeddings_data : Dict
+            Dados dos embeddings (textos similares, metadados, etc)
         expiration : int
             Tempo de expiração em segundos (padrão: 24 horas)
         """
@@ -64,11 +61,10 @@ class RedisService:
                 logger.error("Redis client not initialized")
                 return
 
-            cache_key = f"vectors:{hashlib.md5(query.encode()).hexdigest()}"
+            cache_key = f"embeddings:{hashlib.md5(query.encode()).hexdigest()}"
             cache_data = {
                 'query': query,
-                'vectors': vectors,
-                'texts': texts,
+                'embeddings_data': embeddings_data,
                 'timestamp': datetime.now().isoformat()
             }
 
@@ -78,14 +74,14 @@ class RedisService:
                 json.dumps(cache_data)
             )
 
-            logger.info(f"Cached vectors for query: {query}")
+            logger.info(f"Cached embeddings for query: {query}")
 
         except Exception as e:
-            logger.error(f"Error caching vectors: {e}")
+            logger.error(f"Error caching embeddings: {e}")
 
-    def get_cached_vectors(self, query: str) -> Optional[Dict]:
+    def get_cached_embeddings(self, query: str) -> Optional[Dict]:
         """
-        Recupera vetores do cache Redis.
+        Recupera embeddings do cache Redis.
 
         Parameters
         ----------
@@ -101,17 +97,18 @@ class RedisService:
             if not self.client:
                 return None
 
-            cache_key = f"vectors:{hashlib.md5(query.encode()).hexdigest()}"
+            cache_key = f"embeddings:{hashlib.md5(query.encode()).hexdigest()}"
             cached_data = self.client.get(cache_key)
 
             if cached_data:
-                logger.info(f"Found cached vectors for query: {query}")
-                return json.loads(cached_data)  # type: ignore
+                result = json.loads(str(cached_data))
+                logger.info(f"Found cached embeddings for query: {query}")
+                return result.get('embeddings_data')
 
             return None
 
         except Exception as e:
-            logger.error(f"Error retrieving cached vectors: {e}")
+            logger.error(f"Error retrieving cached embeddings: {e}")
             return None
 
     def clear_cache(self):

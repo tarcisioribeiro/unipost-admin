@@ -8,30 +8,9 @@ Este é um report de erro, vou detalha-lo para que possa entender mais precisame
 
 ---
 
-Erro ao tentar acessar:
+Erro ao gerar post:
 
-pydantic_core._pydantic_core.ValidationError: 3 validation errors for Settings es_host Extra inputs are not permitted [type=extra_forbidden, input_value='https://elastic:9200', input_type=str] For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden es_user Extra inputs are not permitted [type=extra_forbidden, input_value='elastic', input_type=str] For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden es_pass Extra inputs are not permitted [type=extra_forbidden, input_value='orrARDrdr27!', input_type=str] For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
-Traceback:
-File "/app/app.py", line 9, in <module>
-    from components.auth_components import AuthStateManager, LoginForm
-File "/app/components/__init__.py", line 3, in <module>
-    from .auth_components import LoginForm, AuthStateManager
-File "/app/components/auth_components.py", line 11, in <module>
-    from services.auth_service import AuthService
-File "/app/services/__init__.py", line 3, in <module>
-    from .auth_service import AuthService
-File "/app/services/auth_service.py", line 14, in <module>
-    from config.settings import settings
-File "/app/config/__init__.py", line 3, in <module>
-    from .settings import settings
-File "/app/config/settings.py", line 98, in <module>
-    settings = Settings()
-               ^^^^^^^^^^
-File "/usr/local/lib/python3.11/site-packages/pydantic_settings/main.py", line 188, in __init__
-    super().__init__(
-File "/usr/local/lib/python3.11/site-packages/pydantic/main.py", line 253, in __init__
-    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Erro durante o processamento: unhashable type: 'slice'
 
 ---
 

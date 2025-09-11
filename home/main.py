@@ -1,8 +1,8 @@
 from api.token import Token
 from texts.main import Texts
 from dashboard.main import Dashboard
+from config.main import ConfigModule
 from dictionary.vars import HELP_MENU
-from time import sleep
 import streamlit as st
 
 
@@ -24,7 +24,7 @@ class HomePage:
             </p>
         </div>
         """, unsafe_allow_html=True)
-        
+
         # Selectbox com as opções de ajuda
         selected_help = st.selectbox(
             "Escolha uma funcionalidade:",
@@ -32,12 +32,12 @@ class HomePage:
             index=0,
             key="help_selectbox"
         )
-        
+
         # Exibir conteúdo da ajuda selecionada
         if selected_help:
             st.markdown("---")
             st.markdown(HELP_MENU[selected_help])
-        
+
         # Botão para fechar
         st.markdown("<br>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 1, 1])
@@ -66,6 +66,11 @@ class HomePage:
             "📊 Dashboard": Dashboard,
             "🤖 Geração de Conteúdo": Texts,
         }
+
+        # Adicionar opção de configurações apenas para usuários com permissão
+        config_module = ConfigModule()
+        if config_module.check_permissions(st.session_state.user_permissions):
+            menu_options["⚙️ Configurações"] = ConfigModule
 
         with st.sidebar:
             st.markdown("""
@@ -131,13 +136,16 @@ class HomePage:
                     st.session_state.pop("token", None)
                     st.session_state.pop("messages", None)
                     st.session_state.is_logged_in = False
-                    sleep(1.5)
                 st.toast("✅ Logout realizado com sucesso!")
-                sleep(1)
                 st.rerun()
 
-        selected_option = menu_options[selected_option]
-        selected_option().main_menu(
-            st.session_state.token,
-            st.session_state.user_permissions
-        )
+        selected_class = menu_options[selected_option]
+
+        # Tratar chamada específica para ConfigModule
+        if selected_class == ConfigModule:
+            selected_class().main(st.session_state.user_permissions)
+        else:
+            selected_class().main_menu(
+                st.session_state.token,
+                st.session_state.user_permissions
+            )

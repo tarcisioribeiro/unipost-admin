@@ -1,13 +1,12 @@
 import requests
 import openai
 import os
-from sentence_transformers import SentenceTransformer
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 from dictionary.vars import API_BASE_URL, PLATFORMS
+from services.embeddings_service import EmbeddingsService
 from dotenv import load_dotenv
 import logging
-import numpy as np
 
 load_dotenv()
 
@@ -16,27 +15,16 @@ logger = logging.getLogger(__name__)
 
 class TextGenerationService:
     """
-    Serviço para geração de texto usando SentenceTransformers e LLM.
-    Responsável pela vetorização, busca de similaridade e geração de texto.
+    Serviço para geração de texto usando API de embeddings e LLM.
+    Responsável pela busca de textos similares via API e geração de texto.
     """
 
-    def __init__(self, model_name: str = 'all-MiniLM-L6-v2'):
+    def __init__(self):
         """
-        Inicializa o modelo SentenceTransformers e configura OpenAI.
-
-        Parameters
-        ----------
-        model_name : str
-            Nome do modelo SentenceTransformers
+        Inicializa o serviço com embeddings API e configura OpenAI.
         """
-        try:
-            self.model: Optional[SentenceTransformer] = (
-                SentenceTransformer(model_name)
-            )
-            logger.info(f"SentenceTransformer model loaded: {model_name}")
-        except Exception as e:
-            logger.error(f"Error loading SentenceTransformer model: {e}")
-            self.model = None
+        # Inicializar serviço de embeddings via API
+        self.embeddings_service = EmbeddingsService()
 
         # Configuração OpenAI
         self.openai_api_key = os.getenv('OPENAI_API_KEY')
@@ -53,19 +41,20 @@ class TextGenerationService:
             self.openai_client = None
             logger.warning("OpenAI API key not found in environment variables")
 
-    def treat_text_content(self, texts: List[Dict]) -> List[str]:
+    def treat_text_content(self, texts: List[Dict]) -> List[Dict]:
         """
-        Realiza o tratamento dos textos das postagens em formato legível.
+        Realiza o tratamento dos textos dos múltiplos índices em formato
+        legível.
 
         Parameters
         ----------
         texts : List[Dict]
-            Lista de textos obtidos do ElasticSearch
+            Lista de textos obtidos dos índices ElasticSearch
 
         Returns
         -------
-        List[str]
-            Textos tratados e formatados
+        List[Dict]
+            Textos tratados e formatados com metadados
         """
         treated_texts = []
 
@@ -73,126 +62,101 @@ class TextGenerationService:
             content = text.get('content', '')
             title = text.get('title', '')
             author = text.get('author', '')
+            index_type = text.get('type', 'Conteúdo Geral')
+            score = text.get('score', 0)
 
-            treated_content = ""
+            # Tratamento específico por tipo de índice
+            treated_content = f"[{index_type}]\n"
+
             if title:
                 treated_content += f"Título: {title}\n"
             if author:
-                treated_content += f"Autor: {author}\n"
-            if title or author:
-                treated_content += "\n"
+                treated_content += f"Consultor/Autor: {author}\n"
+
+            # Adicionar campos específicos baseados no índice
+            if text.get('index') == 'braincomercial':
+                cliente = text.get('cliente', '')
+                produto = text.get('produto_ofertado', '')
+                if cliente:
+                    treated_content += f"Cliente: {cliente}\n"
+                if produto:
+                    treated_content += f"Produto: {produto}\n"
+
+            elif text.get('index') == 'consultores':
+                resumo = text.get('resumo', '')
+                if resumo:
+                    treated_content += f"Resumo: {resumo}\n"
+
+            elif text.get('index') == 'unibrain':
+                tags = text.get('tags', [])
+                origem = text.get('origem', '')
+                if tags:
+                    tags_str = ', '.join(tags) if isinstance(
+                        tags,
+                        list
+                    ) else str(tags)
+                    treated_content += f"Tags: {tags_str}\n"
+                if origem:
+                    treated_content += f"Origem: {origem}\n"
+
+            treated_content += "\nConteúdo:\n"
             treated_content += content
+
+            # Truncar conteúdo muito longo para evitar sobrecarga
+            if len(treated_content) > 2000:
+                treated_content = treated_content[
+                    :1900
+                ] + "\n[...conteúdo truncado...]"
 
             treated_content = treated_content.strip()
 
             if treated_content:
-                treated_texts.append(treated_content)
+                treated_item = {
+                    'text': treated_content,
+                    'type': index_type,
+                    'title': title,
+                    'score': score,
+                    'index': text.get('index', 'unknown')
+                }
+                treated_texts.append(treated_item)
 
-        logger.info(f"Treated {len(treated_texts)} texts")
+        logger.info(
+            f"Treated {len(treated_texts)} texts from multiple indices"
+        )
         return treated_texts
 
-    def vectorize_texts(self, texts: List[str]) -> List[List[float]]:
-        """
-        Gera vetores usando SentenceTransformers - HuggingFace.
-
-        Parameters
-        ----------
-        texts : List[str]
-            Lista de textos para vetorizar
-
-        Returns
-        -------
-        List[List[float]]
-            Lista de vetores
-        """
-        try:
-            if not self.model:
-                logger.error("SentenceTransformer model not initialized")
-                return []
-
-            vectors = self.model.encode(texts).tolist()
-            logger.info(f"Generated {len(vectors)} vectors")
-            return vectors
-
-        except Exception as e:
-            logger.error(f"Error vectorizing texts: {e}")
-            return []
-
-    def find_similar_vectors(
+    def find_similar_texts_via_api(
             self,
             user_input: str,
-            cached_vectors: List[List[float]],
-            cached_texts: List[str],
-            top_k: int = 5
-    ) -> List[Tuple[str, float]]:
+            candidate_texts: List[Dict],
+            top_k: int = 10
+    ) -> List[Tuple[Dict, float]]:
         """
-        Busca dos vetores que correspondam ao tema proposto pelo usuário.
+        Busca textos similares via API de embeddings.
 
         Parameters
         ----------
         user_input : str
             Input do usuário
-        cached_vectors : List[List[float]]
-            Vetores em cache
-        cached_texts : List[str]
-            Textos correspondentes
+        candidate_texts : List[Dict]
+            Lista de textos candidatos
         top_k : int
             Número de resultados mais similares
 
         Returns
         -------
-        List[Tuple[str, float]]
-            Lista de (texto, score de similaridade)
+        List[Tuple[Dict, float]]
+            Lista de (dados do texto, score de similaridade)
         """
         try:
-            if not self.model:
-                return []
-
-            user_vector = self.model.encode([user_input])[0]
-
-            similarities = []
-            for i, vector in enumerate(cached_vectors):
-                similarity = self._cosine_similarity(user_vector, vector)
-                similarities.append((cached_texts[i], similarity))
-
-            similarities.sort(key=lambda x: x[1], reverse=True)
-            return similarities[:top_k]
-
+            similar_texts = self.embeddings_service.find_similar_texts(
+                user_input, candidate_texts, top_k
+            )
+            logger.info(f"Found {len(similar_texts)} similar texts via API")
+            return similar_texts
         except Exception as e:
-            logger.error(f"Error finding similar vectors: {e}")
+            logger.error(f"Error finding similar texts via API: {e}")
             return []
-
-    def _cosine_similarity(
-            self,
-            vec1: List[float],
-            vec2: List[float]
-    ) -> float:
-        """
-        Calcula similaridade cosseno entre dois vetores.
-
-        Parameters
-        ----------
-        vec1 : List[float]
-            Primeiro vetor
-        vec2 : List[float]
-            Segundo vetor
-
-        Returns
-        -------
-        float
-            Similaridade cosseno (0-1)
-        """
-        vec1 = np.array(vec1)  # type: ignore
-        vec2 = np.array(vec2)  # type: ignore
-
-        dot_product = np.dot(vec1, vec2)
-        norm_vec1 = np.linalg.norm(vec1)
-        norm_vec2 = np.linalg.norm(vec2)
-
-        if norm_vec1 == 0 or norm_vec2 == 0:
-            return 0.0
-
-        return dot_product / (norm_vec1 * norm_vec2)
 
     def get_platform_context(self, platform: str) -> str:
         """
@@ -242,7 +206,7 @@ class TextGenerationService:
     def create_prompt_context(
             self,
             user_topic: str,
-            similar_texts: List[Tuple[str, float]],
+            similar_texts: List[Tuple[Dict, float]],
             platform: str = "",
             tone: str = "profissional",
             creativity_level: str = "equilibrado",
@@ -305,17 +269,33 @@ class TextGenerationService:
 
         context_parts.append("\n")
 
-        # Referências (limitadas para não confundir o foco no tamanho)
+        # Referências dos múltiplos índices (limitadas para não sobrecarregar)
         if similar_texts:
-            context_parts.append("REFERÊNCIAS (use como inspiração):\n")
-            # Limitar a 2 referências para não sobrecarregar
-            for i, (text, score) in enumerate(similar_texts[:2], 1):
-                # Truncar referências muito longas
-                ref_text = text[:200] + "..." if len(text) > 200 else text
-                context_parts.append(f"• Ref {i}: {ref_text}\n")
+            context_parts.append("REFERÊNCIAS ENCONTRADAS:\n")
+
+            # Agrupar referências por tipo para melhor organização
+            refs_by_type: Dict[str, List[Dict]] = {}
+            for text_data, score in similar_texts[:3]:  # Máximo 3 referências
+                text_type = text_data.get('type', 'Conteúdo Geral')
+                if text_type not in refs_by_type:
+                    refs_by_type[text_type] = []
+                refs_by_type[text_type].append((text_data, score))
+
+            ref_count = 1
+            for text_type, refs in refs_by_type.items():
+                context_parts.append(f"\n{text_type}:\n")
+                for text_data, score in refs[:2]:  # Max 2 por tipo
+                    title = text_data.get('title', 'Sem título')
+                    ref_content = text_data.get('text', '')[:300]  # Truncar
+                    context_parts.append(
+                        f"• Ref {ref_count} ({score:.2f}): {title}\n"
+                        f"  Conteúdo: {ref_content}...\n"
+                    )
+                    ref_count += 1
         else:
             context_parts.append(
-                "REFERÊNCIAS: Nenhuma encontrada. Baseie-se apenas no tema.\n"
+                "REFERÊNCIAS: Nenhuma encontrada nos bancos de dados. "
+                "Baseie-se apenas no tema.\n"
             )
 
         # Instruções finais REFORÇADAS
@@ -776,13 +756,13 @@ class TextGenerationService:
             logger.error(f"Error sending for approval: {e}")
             return False
 
-    def is_model_loaded(self) -> bool:
+    def is_embeddings_api_available(self) -> bool:
         """
-        Verifica se o modelo SentenceTransformers está carregado.
+        Verifica se a API de embeddings está disponível.
 
         Returns
         -------
         bool
-            True se carregado, False caso contrário
+            True se disponível, False caso contrário
         """
-        return self.model is not None
+        return self.embeddings_service.health_check()

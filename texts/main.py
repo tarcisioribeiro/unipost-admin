@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 from texts.request import TextsRequest
 from dictionary.vars import PLATFORMS
-from time import sleep
-from services.elasticsearch_service import ElasticsearchService
+from services.embeddings_service import EmbeddingsService
 from services.redis_service import RedisService
 from services.text_generation_service import TextGenerationService
 import logging
@@ -14,17 +13,16 @@ logger = logging.getLogger(__name__)
 class Texts:
     """
     Classe que representa os métodos referentes à geração de post natural.
-    Implementa o fluxo completo conforme roadmap:
-    - Busca automática de posts no ElasticSearch
-    - Vetorização usando SentenceTransformers
-    - Cache dos vetores no Redis
+    Implementa o fluxo completo conforme nova arquitetura:
+    - Busca de embeddings via API externa
+    - Armazenamento no Redis
     - Interface para input do usuário
-    - Elaboração de conpost de prompt
-    - Geração de post via LLM e webhook
+    - Elaboração de prompt com referências
+    - Geração de post via LLM
     """
 
     def __init__(self):
-        self.es_service = ElasticsearchService()
+        self.embeddings_service = EmbeddingsService()
         self.redis_service = RedisService()
         self.text_service = TextGenerationService()
 
@@ -159,76 +157,90 @@ class Texts:
             status_text.text("🔍 Verificando cache Redis...")
             progress_bar.progress(10)
 
-            cached_data = self.redis_service.get_cached_vectors(search_query)
+            cached_embeddings = self.redis_service.get_cached_embeddings(
+                search_query
+            )
 
-            if cached_data:
-                vectors = cached_data['vectors']
-                texts = cached_data['texts']
-                status_text.text("✅ Dados encontrados no cache")
+            if cached_embeddings:
+                similar_texts = cached_embeddings.get('similar_texts', [])
+                status_text.text("✅ Embeddings encontrados no cache")
             else:
-                # 2. Busca automática no ElasticSearch
-                status_text.text("🔍 Buscando posts no ElasticSearch...")
-                progress_bar.progress(20)
+                # 2. Busca via API de embeddings
+                status_text.text("🔍 Buscando embeddings via API...")
+                progress_bar.progress(30)
 
-                raw_texts = self.es_service.search_texts(search_query)
+                raw_texts = self.embeddings_service.search_texts(search_query)
 
-                # Permite geração mesmo sem resultados do ElasticSearch
+                # Permite geração mesmo sem resultados da API
                 if raw_texts:
-                    # 3. Tratamento dos posts
-                    status_text.text("⚙️ Tratando posts encontrados...")
-                    progress_bar.progress(40)
+                    # 3. Tratamento dos textos da API
+                    status_text.text("⚙️ Tratando textos encontrados...")
+                    progress_bar.progress(50)
 
                     texts = self.text_service.treat_text_content(raw_texts)
 
                     if texts:
-                        # 4. Vetorização usando SentenceTransformers
-                        status_text.text("🧠 Gerando vetores semânticos...")
-                        progress_bar.progress(60)
+                        # 4. Busca de textos similares via API
+                        status_text.text("🎯 Encontrando textos similares...")
+                        progress_bar.progress(70)
 
-                        vectors = self.text_service.vectorize_texts(texts)
+                        similar_texts = (
+                            self.text_service.find_similar_texts_via_api(
+                                user_topic,
+                                texts
+                            )
+                        )
 
-                        if vectors:
-                            # 5. Cache no Redis
-                            self.redis_service.cache_vectors(
-                                search_query, vectors, texts)
+                        # 5. Cache no Redis
+                        if similar_texts:
+                            self.redis_service.cache_embeddings(
+                                search_query, {'similar_texts': similar_texts})
+
+                            # Mostrar preview dos embeddings encontrados
+                            status_text.markdown(f"""
+                            ✅ **{len(similar_texts)} embeddings encontrados!**
+
+                            **Top 3 referências mais relevantes:**
+                            """)
+
+                            for i, (
+                                text,
+                                score
+                            ) in enumerate(similar_texts[:3], 1):
+                                title = text.get('title', 'Sem título')
+                                text_type = text.get('type', 'Conteúdo')
+                                score_percentage = round(score * 100, 1)
+
+                                status_text.markdown(f"""
+                                **{i}.** {title} *(Relevância: {
+                                    score_percentage
+                                }%)*
+                                📂 {text_type}
+                                """)
+
+                            # Pequena pausa para permitir visualização
+                            import time
+                            time.sleep(2)
                         else:
                             st.toast(
-                                """Erro na vetorização,
-                                prosseguindo sem referências""",
-                                icon="⚠️")
-                            sleep(2)
-                            vectors, texts = [], []
+                                "Nenhuma referência similar encontrada",
+                                icon="ℹ️"
+                            )
+                            similar_texts = []
                     else:
                         st.toast(
-                            """Posts inválidos após tratamento,
+                            """Textos inválidos após tratamento,
                             prosseguindo sem referências""",
                             icon="⚠️")
-                        sleep(2)
-                        vectors, texts = [], []
+                        similar_texts = []
                 else:
                     st.toast(
-                        """Nenhuma referência encontrada no ElasticSearch,
+                        """Nenhuma referência encontrada na API,
                         gerando baseado apenas no tema""",
                         icon="ℹ️")
-                    sleep(2)
-                    vectors, texts = [], []
+                    similar_texts = []
 
-            # 6. Busca de vetores similares ao tema (se disponível)
-            similar_texts = []
-            if vectors and texts:
-                status_text.text("🎯 Encontrando posts similares...")
-                progress_bar.progress(70)
-
-                similar_texts = self.text_service.find_similar_vectors(
-                    user_topic, vectors, texts)
-                if not similar_texts:
-                    st.toast(
-                        "Nenhuma referência similar encontrada",
-                        icon="ℹ️"
-                    )
-                    sleep(2)
-
-            # 7. Elaboração do contexto de prompt com novos parâmetros
+            # 6. Elaboração do contexto de prompt com novos parâmetros
             status_text.text("📝 Criando contexto do prompt...")
             progress_bar.progress(80)
 
@@ -241,7 +253,7 @@ class Texts:
                 length
             )
 
-            # 8. Geração de post via OpenAI/LLM
+            # 7. Geração de post via OpenAI/LLM
             status_text.text("🤖 Gerando post com IA...")
             progress_bar.progress(90)
 
@@ -250,17 +262,16 @@ class Texts:
             )
             if not generated_text:
                 st.toast("Erro na geração de post via IA", icon="❌")
-                sleep(2)
                 return
 
-            # 9. Envio para aprovação via webhook
+            # 8. Envio para aprovação via webhook
             status_text.text("📤 Enviando para aprovação...")
             progress_bar.progress(95)
 
             approval_sent = self.text_service.send_for_approval(
                 generated_text, user_topic)
 
-            # 10. Salvar no banco de dados da API UniPost
+            # 9. Salvar no banco de dados da API UniPost
             text_data = {
                 "theme": user_topic,
                 "platform": platform if platform else "GENERIC",
@@ -283,9 +294,7 @@ class Texts:
             progress_bar.progress(100)
             status_text.text("✅ Processo concluído com sucesso!")
 
-            # Pequena pausa para mostrar conclusão
-            import time
-            time.sleep(0.5)
+            # Processamento concluído
 
             # Limpar barra de progresso antes de mostrar resultado
             progress_bar.empty()
@@ -294,7 +303,6 @@ class Texts:
             # Exibir resultado na área direita
             with result_container.container():
                 st.toast("Post Gerado com Sucesso!", icon="✅")
-                sleep(2)
 
                 # Informações dos parâmetros
                 platform_name = (PLATFORMS.get(platform, 'Genérico')
@@ -370,7 +378,6 @@ class Texts:
                             st.session_state[
                                 'last_generated'
                             ]['approved'] = True
-                        sleep(2)
                         st.rerun()
 
                 # Botão Reprovar/Reprovado
@@ -390,7 +397,6 @@ class Texts:
                             st.session_state[
                                 'last_generated'
                             ]['approved'] = False
-                        sleep(2)
                         st.rerun()
 
                 # Botão Regenerar (sempre ativo)
@@ -418,16 +424,188 @@ class Texts:
                             "Regenerando post com os mesmos parâmetros...",
                             icon="🔄"
                         )
-                        sleep(2)
                         st.rerun()
 
-                # Referências compactas
+                # Referências detalhadas com embeddings encontrados
                 if similar_texts:
-                    with st.expander(f"📖 Referências ({len(similar_texts)})"):
-                        for i, (text, score) in enumerate(
-                                similar_texts[:3], 1):
-                            st.caption(
-                                f"**{i}.** ({score:.2f}) {text[:150]}...")
+                    with st.expander(f"""📖 Embeddings Encontrados ({
+                        len(similar_texts)
+                        } referências)""", expanded=True
+                    ):
+                        st.markdown("### 🔍 Referências utilizadas na geração:")
+
+                        for i, (
+                            text,
+                            score
+                        ) in enumerate(similar_texts[:5], 1):
+                            # Informações do embedding
+                            title = text.get('title', 'Sem título')
+                            text_type = text.get('type', 'Conteúdo Geral')
+                            index_source = text.get('index', 'unknown')
+                            text_content = text.get('text', '')[:300]
+
+                            # Score em porcentagem para melhor visualização
+                            score_percentage = round(score * 100, 1)
+
+                            # Determinar cor baseada no score
+                            if score >= 0.7:
+                                score_color = "#28a745"
+                                relevance_text = "Alta"
+                            elif score >= 0.4:
+                                score_color = "#ffc107"
+                                relevance_text = "Média"
+                            else:
+                                score_color = "#6c757d"
+                                relevance_text = "Baixa"
+
+                            st.markdown(f"""
+                            <div style="
+                                background: #f8f9fa;
+                                border-left: 4px solid {score_color};
+                                padding: 15px;
+                                margin: 10px 0;
+                                border-radius: 5px;
+                                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                            ">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <h4 style="margin: 0; color: #333; font-size: 16px;">
+                                        📄 {title}
+                                    </h4>
+                                    <div style="
+                                        background: {score_color};
+                                        color: white;
+                                        padding: 4px 8px;
+                                        border-radius: 12px;
+                                        font-size: 12px;
+                                        font-weight: bold;
+                                    ">
+                                        {relevance_text}: {score_percentage}%
+                                    </div>
+                                </div>
+
+                                <div style="margin-bottom: 8px;">
+                                    <span style="
+                                        background: #e9ecef;
+                                        padding: 2px 6px;
+                                        border-radius: 8px;
+                                        font-size: 11px;
+                                        color: #495057;
+                                        margin-right: 8px;
+                                    ">
+                                        🏷️ {text_type}
+                                    </span>
+                                    <span style="
+                                        background: #dee2e6;
+                                        padding: 2px 6px;
+                                        border-radius: 8px;
+                                        font-size: 11px;
+                                        color: #495057;
+                                    ">
+                                        🗂️ {index_source}
+                                    </span>
+                                </div>
+
+                                <div style="
+                                    color: #666;
+                                    font-size: 13px;
+                                    line-height: 1.4;
+                                    background: white;
+                                    padding: 10px;
+                                    border-radius: 4px;
+                                    border: 1px solid #e9ecef;
+                                ">
+                                    <strong>Conteúdo utilizado como referência:
+                                    </strong><br>
+                                    {text_content}{'...' if len(
+                                        text.get('text', '')) > 300 else ''}
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                        if len(similar_texts) > 5:
+                            st.info(
+                                f"""Mostrando 5 de {
+                                    len(similar_texts)
+                                } referências encontradas.
+                                As referências com maior score de
+                                similaridade foram priorizadas."""
+                            )
+
+                        # Resumo estatístico dos embeddings
+                        st.markdown("---")
+                        st.markdown("### 📊 Resumo das Referências:")
+
+                        (
+                            col_stats1, col_stats2, col_stats3, col_stats4
+                        ) = st.columns(4)
+
+                        with col_stats1:
+                            st.metric(
+                                "Total de Referências", len(similar_texts)
+                            )
+
+                        with col_stats2:
+                            avg_score = sum(
+                                score for _, score in similar_texts
+                            ) / len(similar_texts)
+                            st.metric("Score Médio", f"{avg_score:.2f}")
+
+                        with col_stats3:
+                            high_relevance = sum(
+                                1 for _, score in similar_texts if (
+                                    score >= 0.7
+                                ))
+                            st.metric("Alta Relevância", high_relevance)
+
+                        with col_stats4:
+                            # Contar tipos únicos de referências
+                            unique_types = set(
+                                text.get(
+                                    'type',
+                                    'Geral'
+                                ) for text, _ in similar_texts)
+                            st.metric("Tipos de Fonte", len(unique_types))
+
+                        # Mostrar tipos de fontes encontradas
+                        if len(unique_types) > 1:
+                            st.markdown("**🗂️ Tipos de fontes consultadas:**")
+                            types_text = ", ".join(sorted(unique_types))
+                            st.caption(types_text)
+                else:
+                    # Exibir aviso quando não há referências
+                    with st.expander(
+                        "📖 Embeddings Encontrados (0 referências)",
+                        expanded=True
+                    ):
+                        st.warning("""
+                        🔍 **Nenhuma referência encontrada**
+
+                        Este post foi gerado baseado apenas no tema fornecido,
+                        sem utilizar referências do banco de dados
+                        de embeddings.
+
+                        **Possíveis motivos:**
+                        - Tema muito específico ou novo
+                        - Base de dados ainda não contém conteúdo relacionado
+                        - Termos de busca não encontraram correspondências
+
+                        **Dica:** Tente reformular o tema ou usar termos
+                        mais gerais para encontrar referências relacionadas.
+                        """)
+
+                        # Estatísticas quando não há referências
+                        (
+                            col_empty1, col_empty2, col_empty3, col_empty4
+                        ) = st.columns(4)
+
+                        with col_empty1:
+                            st.metric("Total de Referências", 0)
+                        with col_empty2:
+                            st.metric("Score Médio", "N/A")
+                        with col_empty3:
+                            st.metric("Alta Relevância", 0)
+                        with col_empty4:
+                            st.metric("Tipos de Fonte", 0)
 
                 st.toast(f"✅ {send_result}")
 
@@ -446,7 +624,6 @@ class Texts:
         except Exception as e:
             st.toast(f"Erro durante o processamento: {e}", icon="❌")
             logger.error(f"Error in text generation process: {e}")
-            sleep(2)
 
         finally:
             # Garantir limpeza dos elementos de progresso
@@ -645,7 +822,6 @@ class Texts:
                     last_data = st.session_state['last_generated']
                     with result_container:
                         st.toast("Post anterior carregado", icon="📄")
-                        sleep(1)
 
                         # Mostrar informações do post anterior
                         st.markdown(f"""
@@ -658,10 +834,10 @@ class Texts:
                             border-left: 3px solid #007bff;
                         ">
                             📱 {last_data.get('platform', 'N/A')} • 📝 {
-                                last_data.get('tone', 'N/A').title()} •
+                            last_data.get('tone', 'N/A').title()} •
                             🎨 {last_data.get(
-                                    'creativity', 'N/A'
-                                ).title()} • 📏 {last_data.get('length', 'N/A')}
+                                'creativity', 'N/A'
+                            ).title()} • 📏 {last_data.get('length', 'N/A')}
                         </div>
                         """, unsafe_allow_html=True)
 
@@ -691,17 +867,14 @@ class Texts:
                     st.toast(
                         "Por favor, preencha o tema do post!",
                         icon="⚠️")
-                    sleep(2)
                 elif len(text_topic.strip()) < 5:
                     st.toast(
                         "O tema deve ter pelo menos 5 caracteres!",
                         icon="⚠️")
-                    sleep(2)
                 elif len(text_topic.strip()) > 500:
                     st.toast(
                         "O tema deve ter no máximo 500 caracteres!",
                         icon="❌")
-                    sleep(2)
                 else:
                     # Validação passou - processar geração
                     query = search_query if search_query else (
@@ -810,7 +983,6 @@ class Texts:
                     body="Nenhum post encontrado com os filtros aplicados.",
                     icon="🔍"
                 )
-                sleep(2)
                 return
 
             # Exibir posts em cards
@@ -931,7 +1103,6 @@ class Texts:
                                     text_id
                                 )
                             st.toast(result, icon="✅")
-                            sleep(2)
                             st.rerun()
 
                     with col_btn2:
@@ -959,7 +1130,6 @@ class Texts:
                                     text_id
                                 )
                             st.toast(result, icon="❌")
-                            sleep(2)
                             st.rerun()
 
                     with col_btn3:
@@ -986,7 +1156,6 @@ class Texts:
                                 "Dados salvos!",
                                 icon="📝"
                             )
-                            sleep(2)
 
             # Paginação simples
             if len(filtered_texts) > 10:
@@ -995,7 +1164,6 @@ class Texts:
                         min(10, len(filtered_texts))
                     } de {len(filtered_texts)} posts""",
                     icon="📄")
-                sleep(2)
 
         elif 'read' not in permissions:
             st.markdown("""
@@ -1106,9 +1274,9 @@ class Texts:
                         new_approval_status != text_data.get('is_approved'))
 
                     if has_changes:
-                        st.success("📝 Alterações detectadas!")
+                        st.toast("Alterações detectadas!", icon="📝")
                     else:
-                        st.info("ℹ️ Nenhuma alteração feita")
+                        st.toast("Nenhuma alteração feita", icon="ℹ️")
 
                     if new_topic:
                         topic_preview = (new_topic[:200]
@@ -1158,7 +1326,6 @@ class Texts:
                                         text_id=text_data['id'],
                                         updated_data=new_text_data
                                     )
-                                    sleep(1)
 
                                 st.toast(
                                     "Post atualizado com sucesso!",
@@ -1166,7 +1333,6 @@ class Texts:
                                 )
                                 st.balloons()
                                 st.toast(returned_text, icon="ℹ️")
-                                sleep(2)
                                 st.rerun()
 
                 # Área de prévia do post completo
@@ -1250,7 +1416,6 @@ class Texts:
                 st.toast(
                     "Você não possui permissões para usar esta funcionalidade",
                     icon="❌")
-                sleep(2)
                 return
 
         # Mostrar informações de permissão

@@ -8,9 +8,6 @@ services:
       - "8555:8555"
     environment:
       - DJANGO_API_URL=${DJANGO_API_URL}
-      - ELASTICSEARCH_URL=${ES_HOST}
-      - ELASTICSEARCH_USERNAME=${ES_USER}
-      - ELASTICSEARCH_PASSWORD=${ES_PASS}
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       redis:

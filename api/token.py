@@ -1,5 +1,4 @@
 import streamlit as st
-from time import sleep
 import requests
 from dictionary.vars import API_BASE_URL
 
@@ -54,6 +53,5 @@ class Token:
             else:
                 return None
         except Exception as e:
-            st.error(f"Erro ao buscar permissões: {e}")
-            sleep(15)
+            st.toast(f"Erro ao buscar permissões: {e}", icon="❌")
             return None

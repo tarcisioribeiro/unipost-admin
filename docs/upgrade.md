@@ -4,10 +4,9 @@ Este é um pedido de upgrade, vou detalha-lo para que possa entender mais precis
 
 ---
 
-Preciso que a tela de **Dashboards** seja melhorada.  
+Preciso que a tela de **Consulta da base de conhecimentos** seja melhorada.  
 
-* Traduza campos das tabeêas que estejam sendo exibidos em inglês.
-* Melhore o visua
+O html não está sendo re
 
 ---
 

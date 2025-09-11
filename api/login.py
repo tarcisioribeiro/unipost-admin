@@ -45,7 +45,7 @@ class Login:
             else:
                 token = response.status_code
         except Exception as error:
-            st.error(f"Erro na requisição: {error}")
+            st.toast(f"Erro na requisição: {error}", icon="❌")
             token = None
 
         return token, status_code
@@ -87,15 +87,17 @@ class Login:
                         help="Digite sua senha de acesso"
                     )
 
-                    submit_button = st.form_submit_button(
-                        "🚀 Entrar",
-                        use_container_width=True,
-                        type="primary"
-                    )
+                    col_left, col_center, col_right = st.columns([1, 1, 1])
+                    with col_center:
+                        submit_button = st.form_submit_button(
+                            "🚀 Entrar",
+                            use_container_width=True,
+                            type="primary"
+                        )
 
                     if submit_button:
                         if not username or not password:
-                            st.error("⚠️ Preencha todos os campos!")
+                            st.toast("Preencha todos os campos!", icon="⚠️")
                         else:
                             with st.spinner("Verificando credenciais..."):
                                 token, status_code = self.login(
@@ -110,12 +112,14 @@ class Login:
                                             token=token
                                         )
                                     )
-                                    st.success(
-                                        "✅ Login realizado com sucesso!")
+                                    st.toast(
+                                        "Login realizado com sucesso!",
+                                        icon="✅"
+                                    )
                                     st.balloons()
                                     st.rerun()
                                 else:
-                                    st.error("❌ Usuário ou senha incorretos.")
+                                    st.toast("Credenciais inválidas", icon="❌")
 
                 st.markdown("</div>", unsafe_allow_html=True)
 

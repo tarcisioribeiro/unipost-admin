@@ -126,7 +126,7 @@ class Dashboard:
             }
         )
 
-        # Métricas principais
+        # Métricas principais com visual aprimorado
         st.markdown("### 📈 Métricas Gerais")
 
         col1, col2, col3, col4 = st.columns(4)
@@ -138,25 +138,37 @@ class Dashboard:
         platforms_count = len(df['platform'].unique())
 
         with col1:
-            st.metric("📝 Total de Textos", total_texts)
+            st.metric(
+                "📝 Total de Textos",
+                total_texts,
+                help="Número total de textos criados"
+            )
         with col2:
+            pending_percent = (pending_texts / total_texts *
+                               100) if total_texts > 0 else 0
             st.metric(
                 "⏳ Pendentes",
                 pending_texts,
-                delta=f"{(pending_texts / total_texts * 100):.1f}%" if (
-                    total_texts > 0
-                ) else "0%"
+                delta=f"{pending_percent:.1f}%",
+                delta_color="inverse",
+                help="Textos aguardando aprovação"
             )
         with col3:
+            approved_percent = (approved_texts / total_texts *
+                                100) if total_texts > 0 else 0
             st.metric(
                 "✅ Aprovados",
                 approved_texts,
-                delta=f"{(approved_texts / total_texts * 100):.1f}%" if (
-                    total_texts > 0
-                ) else "0%"
+                delta=f"{approved_percent:.1f}%",
+                delta_color="normal",
+                help="Textos aprovados para publicação"
             )
         with col4:
-            st.metric("🌐 Plataformas", platforms_count)
+            st.metric(
+                "🌐 Plataformas",
+                platforms_count,
+                help="Número de plataformas utilizadas"
+            )
 
         st.divider()
 
@@ -175,30 +187,76 @@ class Dashboard:
                 color_discrete_map={
                     'Aprovado': '#28a745',
                     'Pendente': '#ffc107'
-                }
+                },
+                hole=0.3
             )
-            fig_status.update_layout(height=400)
+            fig_status.update_layout(
+                height=400,
+                title_font_size=16,
+                title_x=0.5,
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=-0.2,
+                    xanchor="center",
+                    x=0.5
+                ),
+                margin=dict(t=50, b=50, l=50, r=50)
+            )
+            fig_status.update_traces(
+                textposition='inside',
+                textinfo='percent+label',
+                textfont_size=12,
+                pull=[0.05 if status == 'Aprovado' else 0
+                      for status in status_data.index]
+            )
             st.plotly_chart(fig_status, use_container_width=True)
 
         with col_right:
-            # Gráfico de plataformas (barras)
+            # Gráfico de plataformas (pizza 3D)
             st.markdown("### 🌐 Textos por Plataforma")
             platform_data = df['platform_name'].value_counts()
 
-            fig_platform = px.bar(
-                x=platform_data.index,
-                y=platform_data.values,
-                title="Quantidade por Plataforma",
-                color=platform_data.values,
-                color_continuous_scale="viridis"
-            )
+            # Criar cores distintas para cada plataforma
+            colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+                      '#FFEAA7', '#DDA0DD', '#98D8C8', '#F06292']
+
+            fig_platform = go.Figure(data=[go.Pie(
+                labels=platform_data.index,
+                values=platform_data.values,
+                hole=0.3,
+                textinfo='label+percent+value',
+                textposition='auto',
+                marker=dict(
+                    colors=colors[:len(platform_data)],
+                    line=dict(color='#FFFFFF', width=2)
+                ),
+                pull=[0.1 if i == 0 else 0.05 for i in range(
+                    len(platform_data))
+                ]
+            )])
+
             fig_platform.update_layout(
+                title="Distribuição por Plataforma",
+                title_font_size=16,
+                title_x=0.5,
                 height=400,
-                xaxis_title="Plataforma",
-                yaxis_title="Quantidade",
-                showlegend=False
+                showlegend=True,
+                legend=dict(
+                    orientation="v",
+                    yanchor="middle",
+                    y=0.5,
+                    xanchor="left",
+                    x=1.05
+                ),
+                margin=dict(t=50, b=50, l=50, r=120),
+                scene=dict(
+                    xaxis=dict(visible=False),
+                    yaxis=dict(visible=False),
+                    zaxis=dict(visible=False)
+                )
             )
-            fig_platform.update_layout(xaxis_tickangle=45)
             st.plotly_chart(fig_platform, use_container_width=True)
 
         # Gráfico de linha temporal
@@ -235,11 +293,31 @@ class Dashboard:
             )
 
         fig_timeline.update_layout(
-            title="Textos Criados por Mês",
+            title="Evolução Temporal dos Textos",
+            title_font_size=16,
+            title_x=0.5,
             xaxis_title="Período",
             yaxis_title="Quantidade de Textos",
-            height=400,
-            hovermode='x unified'
+            height=450,
+            hovermode='x unified',
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            margin=dict(t=60, b=50, l=50, r=50),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5
+            ),
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128,128,128,0.2)'
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128,128,128,0.2)'
+            )
         )
 
         st.plotly_chart(fig_timeline, use_container_width=True)
@@ -263,7 +341,32 @@ class Dashboard:
                 platform_summary['Aprovados'] / platform_summary['Total'] * 100
             ).round(1).astype(str) + '%'
 
-            st.dataframe(platform_summary, use_container_width=True)
+            st.dataframe(
+                platform_summary,
+                use_container_width=True,
+                hide_index=False,
+                column_config={
+                    "Total": st.column_config.NumberColumn(
+                        "Total",
+                        help="Total de textos criados",
+                        format="%d"
+                    ),
+                    "Aprovados": st.column_config.NumberColumn(
+                        "Aprovados",
+                        help="Textos aprovados",
+                        format="%d"
+                    ),
+                    "Pendentes": st.column_config.NumberColumn(
+                        "Pendentes",
+                        help="Textos pendentes",
+                        format="%d"
+                    ),
+                    "Taxa Aprovação": st.column_config.TextColumn(
+                        "Taxa Aprovação",
+                        help="Percentual de aprovação"
+                    )
+                }
+            )
 
         with col_table2:
             st.markdown("#### Por Período")
@@ -276,7 +379,28 @@ class Dashboard:
             monthly_summary = monthly_summary.sort_index(
                 ascending=False).head(6)  # Últimos 6 meses
 
-            st.dataframe(monthly_summary, use_container_width=True)
+            st.dataframe(
+                monthly_summary,
+                use_container_width=True,
+                hide_index=False,
+                column_config={
+                    "Total": st.column_config.NumberColumn(
+                        "Total",
+                        help="Total de textos no período",
+                        format="%d"
+                    ),
+                    "Aprovados": st.column_config.NumberColumn(
+                        "Aprovados",
+                        help="Textos aprovados no período",
+                        format="%d"
+                    ),
+                    "Pendentes": st.column_config.NumberColumn(
+                        "Pendentes",
+                        help="Textos pendentes no período",
+                        format="%d"
+                    )
+                }
+            )
 
         # Insights automáticos
         st.markdown("### 💡 Insights")
@@ -301,14 +425,14 @@ class Dashboard:
                 total_texts *
                 100) if total_texts > 0 else 0
             if approval_rate >= 80:
-                st.success(
-                    f"✅ **Excelente taxa de aprovação:** {approval_rate:.1f}%")
+                st.toast(
+                    f"Taxa de aprovação: {approval_rate:.1f}%", icon="✅")
             elif approval_rate >= 60:
-                st.warning(
-                    f"⚠️ **Taxa de aprovação moderada:** {approval_rate:.1f}%")
+                st.toast(
+                    f"Taxa moderada: {approval_rate:.1f}%", icon="⚠️")
             else:
-                st.error(
-                    f"⚠️ **Taxa de aprovação baixa:** {approval_rate:.1f}%")
+                st.toast(
+                    f"Taxa baixa: {approval_rate:.1f}%", icon="❌")
 
         with insights_col2:
             # Textos criados nos últimos 7 dias
