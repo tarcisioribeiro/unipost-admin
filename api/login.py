@@ -58,16 +58,11 @@ class Login:
             del st.session_state["token"]
 
         if "token" not in st.session_state:
-            st.markdown("""
-            <div style="text-align: center; padding: 40px 0;">
-                <h1 style="color: #1f77b4; font-size: 3rem;
-                    margin-bottom: 10px;">📚 UniPost</h1>
-                <p style="font-size: 1.2rem; color: #666;
-                    margin-bottom: 40px;">
-                    Gerador Automático de Posts com IA
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            cols_1, cols_2, cols_3 = st.columns(3)
+            with cols_2:
+                st.title("📚 UniPost")
+
+            st.divider()
 
             col1, col2, col3 = st.columns([1, 2, 1])
 
@@ -121,16 +116,9 @@ class Login:
                                 else:
                                     st.toast("Credenciais inválidas", icon="❌")
 
-                st.markdown("</div>", unsafe_allow_html=True)
-
-                st.markdown("""
-                <div style="text-align: center; margin-top: 30px;
-                    color: #888;">
-                    <h4>
-                        🤖 Melhorado por IA • 🔐 Acesso Seguro<br>
-                        Entre em contato com o administrador para obter acesso
-                    </h4>
-                </div>
-                """, unsafe_allow_html=True)
+                st.caption("🤖 Melhorado por IA • 🔐 Acesso Seguro")
+                st.caption(
+                    "Entre em contato com o administrador para obter acesso"
+                )
         else:
             HomePage().main_menu()

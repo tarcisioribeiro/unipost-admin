@@ -4,7 +4,7 @@ from dictionary.vars import API_BASE_URL
 
 class TextsRequest:
     """
-    Classe responsável pelas requisições referentes aos autores.
+    Classe responsável pelas requisições referentes aos textos.
     """
 
     def get_text_permissions(self, user_permissions):
@@ -19,7 +19,7 @@ class TextsRequest:
         Returns
         -------
         text_permissions : list
-            A lista de permissões do usuário para a aplicação de autores.
+            A lista de permissões do usuário para a aplicação de textos.
         """
 
         text_permissions = []
@@ -41,7 +41,7 @@ class TextsRequest:
 
     def get_texts(self, token):
         """
-        Consulta e retorna os dados dos autores registrados.
+        Consulta e retorna os dados dos textos registrados.
 
         Parameters
         ----------
@@ -69,14 +69,14 @@ class TextsRequest:
 
     def get_text(self, token, text_id):
         """
-        Consulta e retorna os dados do autor selecionado.
+        Consulta e retorna os dados do texto selecionado.
 
         Parameters
         ----------
         token : str
             Token utilizado na requisição de consulta.
         text_id : int
-            Número identificador do autor.
+            Número identificador do texto.
 
         Returns
         -------
@@ -99,14 +99,14 @@ class TextsRequest:
 
     def create_text(self, token, text_data):
         """
-        Envia e cria o autor por meio da requisição.
+        Envia e cria o texto por meio da requisição.
 
         Parameters
         ----------
         token : str
             Token utilizado para o envio da requisição.
-        text_data: str
-            Dicionário com os dados do autor.
+        text_data: dict
+            Dicionário com os dados do texto.
 
         Returns
         -------
@@ -120,31 +120,46 @@ class TextsRequest:
             "Content-Type": "application/json"
         }
 
-        response = requests.post(
-            f"{API_BASE_URL}/texts/",
-            headers=headers,
-            json=text_data
-        )
+        try:
+            response = requests.post(
+                f"{API_BASE_URL}/texts/",
+                headers=headers,
+                json=text_data,
+                timeout=30
+            )
 
-        if response.status_code == 201:
-            return_text = ":white_check_mark: Autor registrado."
-        else:
-            return_text = "Este autor já foi registrado."
+            if response.status_code == 201:
+                return_text = ":white_check_mark: Texto registrado com sucesso."
+            else:
+                # Log detalhado do erro
+                error_detail = ""
+                try:
+                    error_data = response.json()
+                    error_detail = str(error_data)
+                except:
+                    error_detail = response.text
+                
+                return_text = (f"Erro ao registrar texto na API. "
+                              f"Status: {response.status_code}. "
+                              f"Detalhes: {error_detail}")
+                
+        except requests.exceptions.RequestException as e:
+            return_text = f"Erro de conexão com a API: {str(e)}"
 
         return return_text
 
     def update_text(self, token, text_id, updated_data):
         """
-        Faz a exclusão autor com base no identificador, token e novos dados.
+        Faz a atualização do texto com base no identificador, token e dados.
 
         Parameters
         ----------
         token : str
             Token utilizado para o envio da requisição.
         text_id: int
-            Número de identificação do autor.
+            Número de identificação do texto.
         updated_data : dict
-            Os novos dados do autor.
+            Os novos dados do texto.
 
         Returns
         -------
@@ -165,11 +180,11 @@ class TextsRequest:
         )
 
         if response.status_code in [200, 204]:
-            return_text = ":white_check_mark: Autor atualizado."
+            return_text = ":white_check_mark: Texto atualizado."
         elif response.status_code == 400:
             return_text = "Dados inválidos para atualização."
         elif response.status_code == 404:
-            return_text = "Autor não encontrado."
+            return_text = "Texto não encontrado."
         else:
             return_text = "Erro desconhecido."
 
@@ -177,14 +192,14 @@ class TextsRequest:
 
     def delete_text(self, token, text_id):
         """
-        Faz a exclusão do autor com base no identificador e token.
+        Faz a exclusão do texto com base no identificador e token.
 
         Parameters
         ----------
         token : str
             Token utilizado para o envio da requisição.
         text_id: int
-            Número de identificação do autor.
+            Número de identificação do texto.
 
         Returns
         -------
@@ -201,7 +216,7 @@ class TextsRequest:
         )
 
         if response.status_code == 204:
-            returned_text = """:white_check_mark: Autor excluído."""
+            returned_text = """:white_check_mark: Texto excluído."""
         else:
             returned_text = response
 

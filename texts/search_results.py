@@ -8,22 +8,45 @@ logger = logging.getLogger(__name__)
 
 class SearchResults:
     """
-    Classe para exibir resultados de busca dos múltiplos índices Elasticsearch
+    Classe para exibir resultados de busca dos embeddings via API
     """
 
     def __init__(self):
-        pass  # ElasticsearchService não está mais sendo usado"
+        from services.embeddings_service import EmbeddingsService
+        self.embeddings_service = EmbeddingsService()
 
     def display_search_interface(self):
         """
-        Interface de busca para o usuário
+        Interface de busca para o usuário com suporte a metadados
         """
-        st.subheader("🔍 Busca na Base de Conhecimento")
+        st.subheader("🔍 Busca na Base de Embeddings")
 
-        # Verificar conexão
-        if not self.es_service.is_connected():
-            st.toast("Não foi possível conectar ao Elasticsearch", icon="❌")
+        # Verificar conexão com a API
+        if not self.embeddings_service.health_check():
+            st.toast("API de embeddings não está disponível", icon="❌")
             return
+
+        # Abas para diferentes tipos de busca
+        tab_text, tab_metadata, tab_advanced = st.tabs([
+            "📝 Busca Textual",
+            "🏷️ Busca por Metadados",
+            "⚙️ Busca Avançada"
+        ])
+
+        with tab_text:
+            self._display_text_search()
+
+        with tab_metadata:
+            self._display_metadata_search()
+
+        with tab_advanced:
+            self._display_advanced_search()
+
+    def _display_text_search(self):
+        """
+        Interface de busca textual tradicional
+        """
+        st.markdown("### Busca textual simples")
 
         # Interface de busca
         col_search, col_button = st.columns([3, 1])
@@ -33,115 +56,385 @@ class SearchResults:
                 "Digite sua consulta:",
                 placeholder="Ex: marketing digital, vendas, consultoria...",
                 help="Busque por temas, estratégias, ou palavras-chave",
-                key="search_knowledge_base"
+                key="search_text_query"
             )
 
         with col_button:
-            st.markdown("<br>", unsafe_allow_html=True)  # Espaçamento
             search_button = st.button(
                 "🔍 Buscar",
                 type="primary",
                 use_container_width=True,
-                help="Buscar nos bancos de dados"
+                help="Buscar nos embeddings",
+                key="text_search_btn"
             )
 
-        # Configurações avançadas (opcionais)
-        with st.expander("⚙️ Configurações Avançadas", expanded=False):
-            col_size, col_filter = st.columns(2)
-
-            with col_size:
-                result_size = st.slider(
-                    "Número máximo de resultados:",
-                    min_value=5,
-                    max_value=50,
-                    value=20,
-                    step=5,
-                    help="Quantidade de resultados por índice"
-                )
-
-            with col_filter:
-                index_filter = st.multiselect(
-                    "Filtrar por tipo de conteúdo:",
-                    options=[
-                        "Consultoria Comercial",
-                        "Reunião de Consultores",
-                        "Base de Conhecimento"
-                    ],
-                    default=[
-                        "Consultoria Comercial",
-                        "Reunião de Consultores",
-                        "Base de Conhecimento"
-                    ],
-                    help="Selecione os tipos de conteúdo desejados"
-                )
+        # Configurações simples
+        result_size = st.slider(
+            "Número máximo de resultados:",
+            min_value=5,
+            max_value=50,
+            value=20,
+            step=5,
+            help="Quantidade de resultados"
+        )
 
         # Executar busca
         if search_button and search_query.strip():
-            self._perform_search(
-                search_query.strip(),
-                result_size,
-                index_filter
-            )
+            self._perform_text_search(search_query.strip(), result_size)
         elif search_button and not search_query.strip():
             st.toast("Por favor, digite uma consulta para buscar.", icon="⚠️")
 
-    def _perform_search(self, query: str, size: int, type_filter: List[str]):
+    def _display_metadata_search(self):
         """
-        Executa a busca e exibe os resultados
+        Interface de busca por metadados específicos
+        """
+        st.markdown("### Busca por metadados específicos")
 
-        Parameters
-        ----------
-        query : str
-            Consulta de busca
-        size : int
-            Número máximo de resultados
-        type_filter : List[str]
-            Filtros de tipo de conteúdo
+        # Informação sobre metadados
+        st.info(
+            "💡 **Dica:** Use os filtros abaixo para buscar por "
+            "características específicas dos embeddings.")
+
+        # Formulário de busca por metadados
+        col_meta1, col_meta2 = st.columns(2)
+
+        with col_meta1:
+            # Filtros categóricos
+            author_filter = st.text_input(
+                "👤 Autor:",
+                placeholder="Ex: João Silva",
+                help="Buscar por autor específico",
+                key="metadata_author"
+            )
+
+            platform_filter = st.selectbox(
+                "📱 Plataforma:",
+                options=[
+                    "",
+                    "Facebook",
+                    "Instagram",
+                    "LinkedIn",
+                    "TikTok",
+                    "Twitter",
+                    "YouTube"],
+                help="Selecionar plataforma específica",
+                key="metadata_platform")
+
+            theme_filter = st.text_input(
+                "🎯 Tema:",
+                placeholder="Ex: marketing",
+                help="Buscar por tema específico",
+                key="metadata_theme"
+            )
+
+        with col_meta2:
+            # Filtros adicionais
+            tags_filter = st.text_input(
+                "🏷️ Tags:",
+                placeholder="Ex: social media",
+                help="Buscar por tags específicas",
+                key="metadata_tags"
+            )
+
+            origin_filter = st.selectbox(
+                "🗂️ Origem:",
+                options=[
+                    "",
+                    "webscraping",
+                    "generated",
+                    "business_brain",
+                    "manual"],
+                help="Filtrar por origem do conteúdo",
+                key="metadata_origin")
+
+            content_type_filter = st.selectbox(
+                "📄 Tipo de Conteúdo:",
+                options=["", "post", "article", "video", "image", "text"],
+                help="Filtrar por tipo de conteúdo",
+                key="metadata_content_type"
+            )
+
+        # Filtros numéricos
+        st.markdown("**Filtros Numéricos:**")
+        col_num1, col_num2 = st.columns(2)
+
+        with col_num1:
+            word_count_min = st.number_input(
+                "📊 Palavras mínimas:",
+                min_value=0,
+                value=0,
+                help="Número mínimo de palavras",
+                key="metadata_word_min"
+            )
+
+        with col_num2:
+            word_count_max = st.number_input(
+                "📊 Palavras máximas:",
+                min_value=0,
+                value=1000,
+                help="Número máximo de palavras",
+                key="metadata_word_max"
+            )
+
+        # Botão de busca por metadados
+        result_size_meta = st.slider(
+            "Resultados:",
+            min_value=5,
+            max_value=50,
+            value=15,
+            key="metadata_result_size"
+        )
+
+        if st.button(
+            "🔍 Buscar por Metadados",
+            type="primary",
+                key="metadata_search_btn"):
+            # Preparar critérios de busca
+            search_criteria = {}
+
+            if author_filter:
+                search_criteria['author'] = author_filter
+            if platform_filter:
+                search_criteria['platform'] = platform_filter
+            if theme_filter:
+                search_criteria['theme'] = theme_filter
+            if tags_filter:
+                search_criteria['tags'] = tags_filter
+            if origin_filter:
+                search_criteria['origin'] = origin_filter
+            if content_type_filter:
+                search_criteria['content_type'] = content_type_filter
+            if word_count_min > 0:
+                search_criteria['word_count_min'] = str(word_count_min)
+            if word_count_max < 1000:
+                search_criteria['word_count_max'] = str(word_count_max)
+
+            if search_criteria:
+                self._perform_metadata_search(
+                    search_criteria, result_size_meta)
+            else:
+                st.toast("Defina ao menos um critério de busca", icon="⚠️")
+
+    def _display_advanced_search(self):
+        """
+        Interface de busca avançada combinando texto e metadados
+        """
+        st.markdown("### Busca avançada (texto + metadados)")
+
+        # Query textual
+        search_query = st.text_area(
+            "🔍 Consulta textual:",
+            placeholder="Digite sua consulta principal...",
+            height=100,
+            key="advanced_query"
+        )
+
+        # Filtros de metadados (versão simplificada)
+        col_adv1, col_adv2, col_adv3 = st.columns(3)
+
+        with col_adv1:
+            theme = st.text_input("🎯 Tema:", key="adv_theme")
+            platform = st.text_input("📱 Plataforma:", key="adv_platform")
+
+        with col_adv2:
+            origin = st.text_input("🗂️ Origem:", key="adv_origin")
+            author = st.text_input("👤 Autor:", key="adv_author")
+
+        with col_adv3:
+            created_after = st.date_input(
+                "📅 Após:", key="adv_date_after", value=None)
+            created_before = st.date_input(
+                "📅 Antes:", key="adv_date_before", value=None)
+
+        # Campos de busca específicos
+        search_fields = st.multiselect(
+            "🎯 Campos para buscar:",
+            options=['title', 'content', 'theme'],
+            default=['title', 'content'],
+            help="Selecione os campos onde buscar o texto",
+            key="adv_search_fields"
+        )
+
+        result_size_adv = st.slider(
+            "Máximo de resultados:",
+            5, 30, 15,
+            key="adv_result_size"
+        )
+
+        # Botão de busca avançada
+        if st.button(
+            "🚀 Busca Avançada",
+            type="primary",
+                key="advanced_search_btn"):
+            if search_query.strip() or any([theme, platform, origin, author]):
+                self._perform_advanced_search(
+                    query=search_query or "",
+                    theme=theme or "",
+                    platform=platform or "",
+                    origin=origin or "",
+                    author=author or "",
+                    created_after=(created_after.isoformat()
+                                   if created_after else ""),
+                    created_before=(created_before.isoformat()
+                                    if created_before else ""),
+                    search_fields=search_fields,
+                    size=result_size_adv)
+            else:
+                st.toast(
+                    "Forneça uma consulta textual ou filtros de metadados",
+                    icon="⚠️")
+
+    def _perform_text_search(self, query: str, size: int):
+        """
+        Executa busca textual simples
         """
         with st.spinner(f"🔍 Buscando por '{query}'..."):
             try:
-                # Executar busca
-                results = []  # self.es_service.search_texts(query, size=size)
+                results = self.embeddings_service.query_embeddings_by_text(
+                    query)
+                if len(results) > size:
+                    results = results[:size]
+
+                if not results:
+                    st.toast("Nenhum resultado encontrado.", icon="📭")
+                    self._display_search_tips()
+                    return
+
+                self._display_search_statistics(results, query)
+                self._display_search_results(results, show_metadata=True)
+
+            except Exception as e:
+                logger.error(f"Error during text search: {e}")
+                st.toast("Erro durante a busca textual", icon="❌")
+
+    def _perform_metadata_search(self, search_criteria: dict, size: int):
+        """
+        Executa busca baseada em metadados específicos
+        """
+        with st.spinner("🏷️ Buscando por metadados..."):
+            try:
+                # Usar busca por texto para simular busca por metadados
+                search_terms = []
+                for key, value in search_criteria.items():
+                    if value:
+                        search_terms.append(value)
+
+                if search_terms:
+                    query = " ".join(search_terms)
+                    results = self.embeddings_service.query_embeddings_by_text(
+                        query)
+                    if len(results) > size:
+                        results = results[:size]
+                else:
+                    results = []
 
                 if not results:
                     st.toast(
-                        "Nenhum resultado encontrado para sua consulta.",
+                        "Nenhum resultado encontrado com os critérios.",
                         icon="📭"
                     )
-                    st.markdown("""
-                    **💡 Dicas para melhorar sua busca:**
-                    - Use palavras-chave mais específicas
-                    - Tente termos relacionados ou sinônimos
-                    - Verifique a ortografia
-                    - Use termos em português
-                    """)
+                    st.info(
+                        "Tente ajustar os filtros ou usar critérios "
+                        "mais amplos."
+                    )
                     return
 
-                # Filtrar por tipo se especificado
-                if type_filter:
-                    filtered_results = [
-                        r for r in results
-                        if r.get('type', '') in type_filter
-                    ]
+                # Exibir critérios usados
+                criteria_display = []
+                for key, value in search_criteria.items():
+                    if value:
+                        criteria_display.append(f"{key}: {value}")
 
-                    if filtered_results != results:
-                        results = filtered_results
-                        if not results:
-                            st.toast(
-                                "Nenhum resultado encontrado com os filtros.",
-                                icon="⚠️"
-                            )
-                            return
+                st.success(
+                    f"**Critérios aplicados:** {', '.join(criteria_display)}"
+                )
 
-                # Exibir estatísticas
-                self._display_search_statistics(results, query)
-
-                # Exibir resultados
-                self._display_search_results(results)
+                self._display_search_statistics(results, "metadados")
+                self._display_search_results(results, show_metadata=True)
 
             except Exception as e:
-                logger.error(f"Error during search: {e}")
-                st.toast("Erro durante a busca", icon="❌")
+                logger.error(f"Error during metadata search: {e}")
+                st.toast("Erro durante a busca por metadados", icon="❌")
+
+    def _perform_advanced_search(
+        self, query: str, theme: str, platform: str, origin: str,
+        author: str, created_after: str, created_before: str,
+        search_fields: list, size: int
+    ):
+        """
+        Executa busca avançada combinando texto e metadados
+        """
+        with st.spinner("🚀 Executando busca avançada..."):
+            try:
+                # Combinar todos os termos para busca avançada
+                search_terms = []
+                if query.strip():
+                    search_terms.append(query)
+                if theme:
+                    search_terms.append(theme)
+                if platform:
+                    search_terms.append(platform)
+                if origin:
+                    search_terms.append(origin)
+                if author:
+                    search_terms.append(author)
+
+                if search_terms:
+                    combined_query = " ".join(search_terms)
+                    results = self.embeddings_service.query_embeddings_by_text(
+                        combined_query)
+                    if len(results) > size:
+                        results = results[:size]
+                else:
+                    results = []
+
+                if not results:
+                    st.toast(
+                        "Nenhum resultado encontrado com os critérios.",
+                        icon="📭"
+                    )
+                    self._display_search_tips()
+                    return
+
+                # Mostrar critérios aplicados
+                criteria = []
+                if query:
+                    criteria.append(f"Texto: '{query}'")
+                if theme:
+                    criteria.append(f"Tema: {theme}")
+                if platform:
+                    criteria.append(f"Plataforma: {platform}")
+                if origin:
+                    criteria.append(f"Origem: {origin}")
+                if author:
+                    criteria.append(f"Autor: {author}")
+                if created_after:
+                    criteria.append(f"Após: {created_after}")
+                if created_before:
+                    criteria.append(f"Antes: {created_before}")
+
+                if criteria:
+                    st.success(f"**Critérios:** {' • '.join(criteria)}")
+
+                self._display_search_statistics(results, "busca avançada")
+                self._display_search_results(results, show_metadata=True)
+
+            except Exception as e:
+                logger.error(f"Error during advanced search: {e}")
+                st.toast("Erro durante a busca avançada", icon="❌")
+
+    def _display_search_tips(self):
+        """
+        Exibe dicas para melhorar a busca
+        """
+        st.markdown("""
+        **💡 Dicas para melhorar sua busca:**
+        - Use palavras-chave mais específicas
+        - Tente termos relacionados ou sinônimos
+        - Verifique a ortografia
+        - Experimente filtros de metadados mais amplos
+        - Use a busca textual se não encontrar por metadados
+        """)
 
     def _display_search_statistics(self, results: List[Dict], query: str):
         """
@@ -174,17 +467,15 @@ class SearchResults:
         escaped_query = html.escape(str(query))
 
         # Exibir estatísticas
-        st.markdown(f"""
-        <div style="background: #f0f0f0; padding: 15px; 
-                    border-left: 4px solid #333; margin-bottom: 15px;">
-            <h3 style="margin: 0;">Resultados para: "{escaped_query}"</h3>
-            <p style="margin: 8px 0;">
-                Total: {len(results)} | 
-                Relevância máxima: {max_score:.1f} | 
-                Relevância média: {avg_score:.1f}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.success(f"""
+        **Resultados para:** "{escaped_query}"
+
+        **Total:** {
+            len(results)
+        } | **Relevância máxima:** {
+            max_score:.1f
+        } | **Relevância média:** {avg_score:.1f}
+        """)
 
         # Distribuição por tipo
         cols = st.columns(len(type_counts))
@@ -196,65 +487,98 @@ class SearchResults:
                     help=f"Resultados do tipo: {tipo}"
                 )
 
-    def _display_search_results(self, results: List[Dict]):
+    def _display_search_results(
+        self,
+        results: List[Dict],
+        show_metadata: bool
+    ):
         """
-        Exibe os resultados de busca formatados
+        Exibe os resultados de busca formatados com suporte a metadados
 
         Parameters
         ----------
         results : List[Dict]
             Resultados da busca
+        show_metadata : bool
+            Se deve exibir metadados detalhados
         """
         st.markdown("### 📋 Resultados Detalhados")
+
+        if show_metadata:
+            # Opção de visualização
+            col_view, col_sort = st.columns([2, 2])
+
+            with col_view:
+                view_mode = st.selectbox(
+                    "Modo de visualização:",
+                    ["Compacto", "Detalhado", "Metadados Completos"],
+                    key="results_view_mode"
+                )
+
+            with col_sort:
+                sort_by = st.selectbox(
+                    "Ordenar por:",
+                    ["Relevância", "Data", "Autor", "Plataforma"],
+                    key="results_sort"
+                )
+
+            # Aplicar ordenação
+            if sort_by == "Data":
+                results.sort(
+                    key=lambda x: x.get('created_at', ''), reverse=True
+                )
+            elif sort_by == "Autor":
+                results.sort(key=lambda x: x.get('author', ''))
+            elif sort_by == "Plataforma":
+                results.sort(key=lambda x: x.get('platform', ''))
+            # Relevância já vem ordenada por padrão
 
         # Agrupar por tipo para melhor organização
         results_by_type: Dict[str, List[Dict]] = {}
         for result in results:
-            result_type = result.get('type', 'Outros')
+            result_type = result.get('type', 'Post Gerado')
             if result_type not in results_by_type:
                 results_by_type[result_type] = []
             results_by_type[result_type].append(result)
 
-        # Ordenar cada grupo por score
-        for tipo in results_by_type:
-            results_by_type[tipo].sort(
-                key=lambda x: x.get('score', 0),
-                reverse=True
-            )
+        # Ordenar cada grupo por score se não foi aplicada outra ordenação
+        if not show_metadata or sort_by == "Relevância":
+            for tipo in results_by_type:
+                results_by_type[tipo].sort(
+                    key=lambda x: x.get('score', 0),
+                    reverse=True
+                )
 
         # Exibir resultados por tipo
         for result_type, type_results in results_by_type.items():
 
-            # Cabeçalho do tipo
+            # Cabeçalho do tipo com ícones apropriados
             type_icons = {
+                'Post Gerado': '📝',
                 'Consultoria Comercial': '💼',
                 'Reunião de Consultores': '🤝',
-                'Base de Conhecimento': '📚'
+                'Base de Conhecimento': '📚',
+                'Embedding': '🧠'
             }
             icon = type_icons.get(result_type, '📄')
 
             # Escapar HTML do tipo de resultado
             escaped_result_type = html.escape(str(result_type))
 
-            st.markdown(f"""
-            <div style="
-                background: #f8f9fa;
-                padding: 10px 15px;
-                border-radius: 8px;
-                border-left: 4px solid #007bff;
-                margin: 20px 0 10px 0;
-            ">
-                <h4 style="margin: 0; color: #333;">
-                    {icon} {escaped_result_type} ({
-                len(type_results)
-            } resultados)
-                </h4>
-            </div>
-            """, unsafe_allow_html=True)
+            st.info(f"""
+            **{icon} {escaped_result_type}** ({len(type_results)} resultados)
+            """)
 
             # Resultados do tipo
-            for i, result in enumerate(type_results[:10], 1):
-                self._display_single_result(result, i, result_type)
+            for i, result in enumerate(type_results, 1):
+                if show_metadata:
+                    self._display_enhanced_result(
+                        result, i, result_type, view_mode if (
+                            show_metadata
+                        ) else "Compacto"
+                    )
+                else:
+                    self._display_single_result(result, i, result_type)
 
     def _display_single_result(
         self,
@@ -274,14 +598,7 @@ class SearchResults:
         result_type : str
             Tipo do resultado
         """
-        # Definir cores por tipo
-        type_colors = {
-            'Consultoria Comercial': '#28a745',
-            'Reunião de Consultores': '#007bff',
-            'Base de Conhecimento': '#6f42c1',
-            'Outros': '#6c757d'
-        }
-        color = type_colors.get(result_type, '#6c757d')
+        # Cores por tipo de resultado definidas (para uso futuro)
 
         # Extrair e escapar dados para HTML
         title = html.escape(str(result.get('title', 'Sem título')))
@@ -318,43 +635,239 @@ class SearchResults:
         # Preparar informações extras escapadas
         extra_info_escaped = " • ".join(extra_info)
 
-        # Card do resultado
+        # Card do resultado usando componentes nativos
         with st.container():
-            st.markdown(f"""
-            <div style="border: 1px solid #ddd; padding: 15px; 
-                        margin-bottom: 12px; border-left: 3px solid {color};">
-                <div style="display: flex; justify-content: space-between; 
-                            margin-bottom: 8px;">
-                    <h5 style="margin: 0;">{index}. {title_display}</h5>
-                    <span style="background: {color}; color: white; 
-                                 padding: 2px 6px;">{score:.2f}</span>
-                </div>
-                
-                <div style="color: #666; font-size: 13px; margin-bottom: 8px;">
-                    {f'{author}' if author else ''} 
-                    {f' • {created_at}' if created_at else ''}
-                </div>
-                
-                {f'<div style="color: #555; font-size: 12px; margin-bottom: 8px;">{extra_info_escaped}</div>' if extra_info_escaped else ''}
+            col_title, col_score = st.columns([4, 1])
 
-                <div style="background: #f5f5f5; padding: 12px; 
-                            max-height: 150px; overflow-y: auto;">
-                    {content_preview}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            with col_title:
+                st.markdown(f"**{index}. {title_display}**")
+
+            with col_score:
+                if score >= 0.8:
+                    st.success(f"{score:.2f}")
+                elif score >= 0.6:
+                    st.warning(f"{score:.2f}")
+                else:
+                    st.info(f"{score:.2f}")
+
+            if author or created_at:
+                st.caption(
+                    f"""{
+                        author if author else ''
+                    }{' • ' + created_at if created_at else ''}""")
+
+            if extra_info_escaped:
+                st.caption(extra_info_escaped)
+
+            st.text_area(
+                "Conteúdo:",
+                value=content_preview,
+                height=150,
+                disabled=True,
+                label_visibility="collapsed",
+                key=f"content_{index}_{result_type}"
+            )
+
+            st.divider()
+
+    def _display_enhanced_result(
+        self,
+        result: Dict,
+        index: int,
+        result_type: str,
+        view_mode: str = "Detalhado"
+    ):
+        """
+        Exibe um resultado individual com metadados aprimorados
+
+        Parameters
+        ----------
+        result : Dict
+            Dados do resultado
+        index : int
+            Índice do resultado
+        result_type : str
+            Tipo do resultado
+        view_mode : str
+            Modo de visualização (Compacto, Detalhado, Metadados Completos)
+        """
+        # Extrair dados principais
+        title = html.escape(str(result.get('title', 'Sem título')))
+        content = html.escape(
+            str(result.get('content', result.get('text', '')))
+        )
+        score = result.get('score', 0)
+
+        # Extrair metadados
+        metadata = result.get('metadata', {})
+
+        # Informações básicas
+        author = html.escape(
+            str(result.get('author', metadata.get('author', '')))
+        )
+        platform = html.escape(
+            str(result.get('platform', metadata.get('platform_display', '')))
+        )
+        theme = html.escape(
+            str(result.get('theme', metadata.get('theme', '')))
+        )
+        origin = html.escape(
+            str(result.get('origin', metadata.get('origin', '')))
+        )
+        created_at = html.escape(str(result.get('created_at', '')))
+
+        # Metadados específicos
+        tags = html.escape(str(metadata.get('tags', '')))
+        word_count = metadata.get('word_count', '')
+        content_length = metadata.get('length', '')
+        content_type = metadata.get('content_type', '')
+
+        # Truncar conteúdo baseado no modo de visualização
+        if view_mode == "Compacto":
+            content_preview = content[:200] + "..." if len(
+                content
+            ) > 200 else content
+            title_display = title[:80] + "..." if len(title) > 80 else title
+        else:
+            content_preview = content[:500] + "..." if len(
+                content
+            ) > 500 else content
+            title_display = title[:120] + "..." if len(title) > 120 else title
+
+        # Container principal do resultado
+        with st.container():
+            # Header com título e score
+            col_title, col_score = st.columns([4, 1])
+
+            with col_title:
+                st.markdown(f"**{index}. {title_display}**")
+
+            with col_score:
+                if score >= 0.8:
+                    st.success(f"🎯 {score:.3f}")
+                elif score >= 0.6:
+                    st.warning(f"🎯 {score:.3f}")
+                else:
+                    st.info(f"🎯 {score:.3f}")
+
+            # Metadados principais em linha
+            metadata_line = []
+            if platform:
+                metadata_line.append(f"📱 {platform}")
+            if author:
+                metadata_line.append(f"👤 {author}")
+            if theme:
+                metadata_line.append(f"🎯 {theme}")
+            if origin:
+                metadata_line.append(f"🗂️ {origin}")
+
+            if metadata_line:
+                st.caption(" • ".join(metadata_line))
+
+            # Data de criação formatada
+            if created_at and len(created_at) >= 10:
+                try:
+                    from datetime import datetime
+                    date_obj = datetime.strptime(created_at[:10], '%Y-%m-%d')
+                    br_date = date_obj.strftime('%d/%m/%Y')
+                    st.caption(f"📅 {br_date}")
+                except Exception:
+                    st.caption(f"📅 {created_at[:10]}")
+
+            # Conteúdo
+            st.text_area(
+                "Conteúdo:",
+                value=content_preview,
+                height=150 if view_mode != "Compacto" else 100,
+                disabled=True,
+                label_visibility="collapsed",
+                key=f"""enhanced_content_{index}_{result_type}_{hash(str(
+                    result.get('id', index)))}"""
+            )
+
+            # Metadados adicionais baseados no modo de visualização
+            if view_mode == "Detalhado" or view_mode == "Metadados Completos":
+
+                if tags or word_count or content_length:
+                    col_meta1, col_meta2, col_meta3 = st.columns(3)
+
+                    with col_meta1:
+                        if tags:
+                            st.caption(f"🏷️ **Tags:** {tags}")
+
+                    with col_meta2:
+                        if word_count:
+                            st.caption(f"📊 **Palavras:** {word_count}")
+
+                    with col_meta3:
+                        if content_length:
+                            st.caption(f"📏 **Tamanho:** {content_length}")
+
+            # Modo "Metadados Completos" - mostra tudo em expandir
+            if view_mode == "Metadados Completos":
+                with st.expander(
+                    f"🔍 Metadados Completos - Resultado {index}",
+                    expanded=False
+                ):
+                    col_complete1, col_complete2 = st.columns(2)
+
+                    with col_complete1:
+                        st.markdown("**📋 Dados Básicos:**")
+                        st.markdown(f"- **ID:** {result.get('id', 'N/A')}")
+                        st.markdown(f"- **Tipo:** {result_type}")
+                        st.markdown(
+                            f"- **Índice:** {result.get('index', 'N/A')}"
+                        )
+                        st.markdown(f"- **Score:** {score:.4f}")
+                        if content_type:
+                            st.markdown(f"- **Tipo Conteúdo:** {content_type}")
+
+                    with col_complete2:
+                        st.markdown("**🔧 Metadados Técnicos:**")
+                        st.markdown(f"""- **Dimensão Vetor:** {
+                            result.get('vector_dimension', 'N/A')
+                        }""")
+                        st.markdown(
+                            f"""- **Atualizado:** {
+                                result.get(
+                                    'updated_at',
+                                    'N/A'
+                                )[:10] if result.get(
+                                    'updated_at'
+                                ) else 'N/A'}"""
+                        )
+                        st.markdown(
+                            f"""- **Código Plataforma:** {
+                                metadata.get(
+                                    'platform_code',
+                                    metadata.get(
+                                        'platform',
+                                        'N/A'))}""")
+
+                        # Exibir metadados originais se disponíveis
+                        original_metadata = metadata.get(
+                            'original_metadata', {})
+                        if original_metadata and len(original_metadata) > 0:
+                            st.markdown("**🗂️ Metadados Originais:**")
+                            for key, value in original_metadata.items():
+                                if value and str(value).strip():
+                                    st.markdown(
+                                        f"""- **{
+                                            key
+                                        }:** {
+                                            str(value)[:50]
+                                        }{'...' if len(
+                                            str(value)
+                                        ) > 50 else ''}"""
+                                    )
+
+            st.divider()
 
     def main_interface(self):
         """
         Interface principal de busca
         """
-        st.markdown("""
-        <div style="text-align: center; margin-bottom: 20px;">
-            <h2>Busca Inteligente</h2>
-            <p style="color: #666;">
-                Pesquise em nossa base de conhecimento
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.title("Busca Inteligente")
+        st.caption("Pesquise em nossa base de conhecimento")
 
         self.display_search_interface()
