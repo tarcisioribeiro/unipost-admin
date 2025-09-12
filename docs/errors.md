@@ -8,9 +8,7 @@ Este é um report de erro, vou detalha-lo para que possa entender mais precisame
 
 ---
 
-Erro ao gerar post:
 
-  Erro durante o processamento: unhashable type: 'slice'
 
 ---
 

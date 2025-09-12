@@ -4,9 +4,7 @@ Este é um pedido de upgrade, vou detalha-lo para que possa entender mais precis
 
 ---
 
-Preciso que a tela de **Consulta da base de conhecimentos** seja melhorada.  
 
-O html não está sendo re
 
 ---
 

@@ -38,7 +38,19 @@ Regras inegociaveis:
   * Analise o arquivo de erros do flake novamente,
   e corrija os erros reportados pelo Flake.
 
-  Refaça o container com o seguinte comando:
+  Refaça o container com os seguintes comandos:
+
+  ```bash
+  docker compose down -v && sleep 10
+  ```
+
+  ```bash
+  docker image rm unipost-app: latest && sleep 5
+  ```
+
+  ```bash
+  docker system prune && sleep 5 && docker builder prune
+  ```
 
   ```bash
   docker compose up --build -d
