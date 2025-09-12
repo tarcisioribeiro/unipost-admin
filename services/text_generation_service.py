@@ -150,7 +150,7 @@ class TextGenerationService:
         """
         try:
             similar_texts = self.embeddings_service.find_similar_texts(
-                user_input, candidate_texts, top_k
+                user_input, candidate_texts
             )
             logger.info(f"Found {len(similar_texts)} similar texts via API")
             return similar_texts
@@ -279,7 +279,9 @@ class TextGenerationService:
                 text_type = text_data.get('type', 'Conteúdo Geral')
                 if text_type not in refs_by_type:
                     refs_by_type[text_type] = []
-                refs_by_type[text_type].append((text_data, score))
+                refs_by_type[text_type].append(
+                    (text_data, score)  # type: ignore
+                )
 
             ref_count = 1
             for text_type, refs in refs_by_type.items():
@@ -740,7 +742,7 @@ class TextGenerationService:
             }
 
             response = requests.post(
-                f"{API_BASE_URL}/approval-webhook/",
+                f"{API_BASE_URL}/webhook/approval/",
                 json=webhook_data,
                 timeout=10
             )
