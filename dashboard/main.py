@@ -43,21 +43,13 @@ class Dashboard:
             'is_superuser', False) if user_data else False
 
         if is_superuser:
-            st.markdown("""
-            <div style="text-align: center; padding: 50px;
-                background: #f8d7da; border-radius: 15px;
-                border: 1px solid #f5c6cb;">
-                <h3 style="color: #721c24;">
-                    ⚠️ Acesso Restrito para Superusuário
-                </h3>
-                <p style="color: #721c24; font-size: 1.1rem;">
-                    O dashboard não está disponível para superusuários.<br>
-                    Esta funcionalidade é destinada apenas aos usuários
-                        regulares<br>
-                    que trabalham diretamente com a geração de textos.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.error("""
+            **⚠️ Acesso Restrito para Superusuário**
+
+            O dashboard não está disponível para superusuários.
+            Esta funcionalidade é destinada apenas aos usuários regulares
+            que trabalham diretamente com a geração de textos.
+            """)
             return
 
         # Verificar se tem permissões de texto usando formato Django
@@ -71,45 +63,32 @@ class Dashboard:
             perm in permissions for perm in django_text_permissions)
 
         if not has_text_permission:
-            st.markdown("""
-            <div style="text-align: center; padding: 50px;
-                background: #fff3cd; border-radius: 15px;
-                border: 1px solid #ffeaa7;">
-                <h3 style="color: #856404;">🔒 Acesso Restrito</h3>
-                <p style="color: #856404; font-size: 1.1rem;">
-                    Você não possui permissões relacionadas aos textos.<br>
-                    O dashboard está disponível apenas para usuários<br>
-                    com permissões de texto (ler, criar, editar ou excluir).
-                    <br>
-                <br>
-                    Entre em contato com o administrador do sistema.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.warning("""
+            **🔒 Acesso Restrito**
+
+            Você não possui permissões relacionadas aos textos.
+            O dashboard está disponível apenas para usuários
+            com permissões de texto (ler, criar, editar ou excluir).
+
+            Entre em contato com o administrador do sistema.
+            """)
             return
 
-        st.markdown("""
-        <div style="text-align: center; padding: 20px 0;">
-            <h1 style="color: #1f77b4;">📊 Dashboard</h1>
-        </div>
-        """, unsafe_allow_html=True)
+        st.header("📊 Dashboard")
 
         st.divider()
 
         texts = TextsRequest().get_texts(token)
 
         if not texts:
-            st.markdown("""
-            <div style="text-align: center; padding: 50px;
-                background: #f8f9fa; border-radius: 15px;
-                border: 2px dashed #dee2e6;">
-                <h3 style="color: #6c757d;">📄 Nenhum texto encontrado</h3>
-                <p style="color: #6c757d; font-size: 1.1rem;">
-                    Ainda não há textos para gerar estatísticas.<br>
-                    Que tal gerar seu primeiro texto usando IA?
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col2:
+                st.info("""
+                **📄 Nenhum texto encontrado**
+
+                Ainda não há textos para gerar estatísticas.
+                Que tal gerar seu primeiro texto usando IA?
+                """)
             return
 
         # Preparar dados para análise

@@ -70,7 +70,10 @@ class Texts:
         ]
         ]
 
-        df = df.sort_values(by="Data de Criação", ascending=False)
+        df = df.sort_values(
+            by="Data de Criação",
+            ascending=False
+        )
 
         return df
 
@@ -140,14 +143,8 @@ class Texts:
         """
         # Criar interface de progresso na área de resultado
         with result_container.container():
-            st.markdown("""
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h3 style="color: #1f77b4;">🚀 Gerando Post com IA</h3>
-                <p style="color: #666;">
-                    Processando sua solicitação...
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.subheader("🚀 Gerando Post com IA")
+            st.caption("Processando sua solicitação...")
 
             progress_bar = st.progress(0)
             status_text = st.empty()
@@ -165,11 +162,33 @@ class Texts:
                 similar_texts = cached_embeddings.get('similar_texts', [])
                 status_text.text("✅ Embeddings encontrados no cache")
             else:
-                # 2. Busca via API de embeddings
-                status_text.text("🔍 Buscando embeddings via API...")
+                # 2. Busca via API de embeddings (por palavras individuais)
+                status_text.text("🔍 Buscando embeddings por palavras individuais...")
                 progress_bar.progress(30)
 
-                raw_texts = self.embeddings_service.search_texts(search_query)
+                # Consultar por palavras individuais
+                embeddings_by_word = self.embeddings_service.query_embeddings_by_individual_words(
+                    search_query
+                )
+                
+                # Agregar todos os resultados para manter compatibilidade
+                raw_texts = []
+                for word, word_embeddings in embeddings_by_word.items():
+                    raw_texts.extend(word_embeddings)
+                
+                # Remover duplicatas baseado no ID
+                seen_ids = set()
+                unique_texts = []
+                for text in raw_texts:
+                    text_id = text.get('id', str(hash(str(text))))
+                    if text_id not in seen_ids:
+                        seen_ids.add(text_id)
+                        unique_texts.append(text)
+                
+                raw_texts = unique_texts
+                
+                # Armazenar dados detalhados para mostrar depois
+                st.session_state['detailed_embeddings'] = embeddings_by_word
 
                 # Permite geração mesmo sem resultados da API
                 if raw_texts:
@@ -289,7 +308,7 @@ class Texts:
                     f"Text successfully registered in API: {send_result}")
             except Exception as api_error:
                 logger.error(f"Error registering in API: {api_error}")
-                send_result = "Erro ao registrar na API"
+                send_result = f"❌ **Erro ao registrar na API**: {str(api_error)}"
 
             progress_bar.progress(100)
             status_text.text("✅ Processo concluído com sucesso!")
@@ -314,45 +333,20 @@ class Texts:
                 ) if generated_text else 0
                 target_count = self.text_service.extract_word_count(length)
 
-                # Cor baseada na precisão da contagem
-                count_color = "#28a745" if abs(
-                    word_count - target_count
-                ) <= 20 else "#ffc107"
-
-                st.markdown(f"""
-                <div style="
-                    background: #e7f3ff;
-                    padding: 10px;
-                    border-radius: 6px;
-                    margin-bottom: 15px;
-                    font-size: 12px;
-                    border-left: 3px solid #007bff;
-                ">
-                    📱 {platform_name} • 📝 {tone.title()} •
-                    🎨 {creativity_level.title()} • 📏 {length}
-                    <br>📚 {len(similar_texts)} referências •
-                    <span style="color: {count_color}; font-weight: bold;">
-                        📊 {word_count} palavras (alvo: {target_count})
-                    </span>
-                </div>
-                """, unsafe_allow_html=True)
+                # Mostrar informações em formato nativo
+                st.info(f"""
+                📱 **Plataforma:** {platform_name}
+                📝 **Tom:** {tone.title()}
+                🎨 **Criatividade:** {creativity_level.title()}
+                📏 **Tamanho:** {length}
+                📚 **Referências:** {len(similar_texts)}
+                📊 **Palavras:** {word_count} (alvo: {target_count})
+                """)
 
                 # Post gerado principal
-                formatted_text = generated_text.replace('\n', '<br>')
-                st.markdown(f"""
-                <div style="
-                    background: white;
-                    padding: 20px;
-                    border-radius: 10px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                    border: 1px solid #e9ecef;
-                    margin-bottom: 15px;
-                    line-height: 1.6;
-                    font-size: 15px;
-                ">
-                {formatted_text}
-                </div>
-                """, unsafe_allow_html=True)
+                with st.container():
+                    st.markdown("**📄 Post Gerado:**")
+                    st.markdown(generated_text)
 
                 # Botões de ação (mesmo padrão da lista)
                 st.markdown("**🎛️ Ações:**")
@@ -430,7 +424,7 @@ class Texts:
                 if similar_texts:
                     with st.expander(f"""📖 Embeddings Encontrados ({
                         len(similar_texts)
-                        } referências)""", expanded=True
+                    } referências)""", expanded=True
                     ):
                         st.markdown("### 🔍 Referências utilizadas na geração:")
 
@@ -438,89 +432,141 @@ class Texts:
                             text,
                             score
                         ) in enumerate(similar_texts[:5], 1):
-                            # Informações do embedding
+                            # Informações do embedding com metadados
                             title = text.get('title', 'Sem título')
                             text_type = text.get('type', 'Conteúdo Geral')
                             index_source = text.get('index', 'unknown')
                             text_content = text.get('text', '')[:300]
 
+                            # Extrair metadados do embedding
+                            metadata = text.get('metadata', {})
+                            platform = metadata.get(
+                                'platform_display',
+                                text.get('platform', '')
+                            )
+                            theme = metadata.get(
+                                'theme',
+                                text.get('theme', '')
+                            )
+                            author = metadata.get(
+                                'author',
+                                text.get('author', '')
+                            )
+                            origin = text.get('origin', '')
+                            created_date = text.get('created_at', '')
+
+                            # Campos específicos dos metadados
+                            tags = metadata.get('tags', '')
+                            word_count = metadata.get('word_count', '')
+                            length = metadata.get('length', '')
+
                             # Score em porcentagem para melhor visualização
                             score_percentage = round(score * 100, 1)
 
-                            # Determinar cor baseada no score
-                            if score >= 0.7:
-                                score_color = "#28a745"
-                                relevance_text = "Alta"
-                            elif score >= 0.4:
-                                score_color = "#ffc107"
-                                relevance_text = "Média"
-                            else:
-                                score_color = "#6c757d"
-                                relevance_text = "Baixa"
+                            # Score armazenado para uso futuro
 
-                            st.markdown(f"""
-                            <div style="
-                                background: #f8f9fa;
-                                border-left: 4px solid {score_color};
-                                padding: 15px;
-                                margin: 10px 0;
-                                border-radius: 5px;
-                                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                            ">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                    <h4 style="margin: 0; color: #333; font-size: 16px;">
-                                        📄 {title}
-                                    </h4>
-                                    <div style="
-                                        background: {score_color};
-                                        color: white;
-                                        padding: 4px 8px;
-                                        border-radius: 12px;
-                                        font-size: 12px;
-                                        font-weight: bold;
-                                    ">
-                                        {relevance_text}: {score_percentage}%
-                                    </div>
-                                </div>
+                            with st.container():
+                                st.markdown(f"**📄 {title}**")
 
-                                <div style="margin-bottom: 8px;">
-                                    <span style="
-                                        background: #e9ecef;
-                                        padding: 2px 6px;
-                                        border-radius: 8px;
-                                        font-size: 11px;
-                                        color: #495057;
-                                        margin-right: 8px;
-                                    ">
-                                        🏷️ {text_type}
-                                    </span>
-                                    <span style="
-                                        background: #dee2e6;
-                                        padding: 2px 6px;
-                                        border-radius: 8px;
-                                        font-size: 11px;
-                                        color: #495057;
-                                    ">
-                                        🗂️ {index_source}
-                                    </span>
-                                </div>
+                                col_info, col_score = st.columns([3, 1])
 
-                                <div style="
-                                    color: #666;
-                                    font-size: 13px;
-                                    line-height: 1.4;
-                                    background: white;
-                                    padding: 10px;
-                                    border-radius: 4px;
-                                    border: 1px solid #e9ecef;
-                                ">
-                                    <strong>Conteúdo utilizado como referência:
-                                    </strong><br>
-                                    {text_content}{'...' if len(
-                                        text.get('text', '')) > 300 else ''}
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                                with col_info:
+                                    # Exibir metadados principais
+                                    metadata_info = []
+                                    if platform:
+                                        metadata_info.append(f"📱 {platform}")
+                                    if theme:
+                                        metadata_info.append(f"🎯 {theme}")
+                                    if origin:
+                                        metadata_info.append(f"🗂️ {origin}")
+
+                                    if metadata_info:
+                                        st.caption(" • ".join(metadata_info))
+                                    else:
+                                        st.caption(
+                                            f"""🏷️ {
+                                                text_type
+                                            } • 🗂️ {index_source}"""
+                                        )
+
+                                with col_score:
+                                    if score >= 0.7:
+                                        st.success(
+                                            f"Alta: {score_percentage}%"
+                                        )
+                                    elif score >= 0.4:
+                                        st.warning(
+                                            f"Média: {score_percentage}%"
+                                        )
+                                    else:
+                                        st.info(f"Baixa: {score_percentage}%")
+
+                                # Seção expandida com mais metadados
+                                with st.expander(
+                                    "📋 Ver detalhes completos",
+                                    expanded=False
+                                ):
+                                    col_meta1, col_meta2 = st.columns(2)
+
+                                    with col_meta1:
+                                        if author:
+                                            st.markdown(
+                                                f"**👤 Autor:** {author}"
+                                            )
+                                        if created_date:
+                                            try:
+                                                from datetime import datetime
+                                                if len(created_date) >= 10:
+                                                    date_obj = (
+                                                        datetime.strptime(
+                                                            created_date[:10],
+                                                            '%Y-%m-%d'
+                                                        )
+                                                    )
+                                                    br_date = (
+                                                        date_obj.strftime(
+                                                            '%d/%m/%Y'
+                                                        )
+                                                    )
+                                                    st.markdown(
+                                                        f"""**📅 Criado em:** {
+                                                            br_date
+                                                        }"""
+                                                    )
+                                            except Exception:
+                                                st.markdown(
+                                                    f"""**📅 Criado em:** {
+                                                        created_date[:10]
+                                                    }"""
+                                                )
+                                        if tags:
+                                            st.markdown(f"**🏷️ Tags:** {tags}")
+
+                                    with col_meta2:
+                                        if word_count:
+                                            st.markdown(
+                                                f"**📊 Palavras:** {word_count}"
+                                            )
+                                        if length:
+                                            st.markdown(
+                                                f"**📏 Tamanho:** {length}"
+                                            )
+                                        st.markdown(
+                                            f"""**🆔 ID:** {
+                                                text.get('id', 'N/A')}"""
+                                        )
+
+                                st.markdown(
+                                    "**Conteúdo utilizado como referência:**"
+                                )
+                                st.text(
+                                    f"""{
+                                        text_content
+                                    }{'...' if len(
+                                        text.get('text', '')
+                                    ) > 300 else ''}"""
+                                )
+                                st.divider()
 
                         if len(similar_texts) > 5:
                             st.info(
@@ -607,7 +653,65 @@ class Texts:
                         with col_empty4:
                             st.metric("Tipos de Fonte", 0)
 
-                st.toast(f"✅ {send_result}")
+                # Mostrar resultado do registro na API
+                if "✅" in send_result or "✓" in send_result or "registrado com sucesso" in send_result:
+                    st.success("✅ **Texto registrado com sucesso na API!**")
+                elif "❌" in send_result or "Erro" in send_result:
+                    st.markdown(f"""
+                    <div style='padding: 1rem; background-color: #ffebee; border: 1px solid #f44336; border-radius: 0.5rem; margin: 1rem 0;'>
+                        <h4 style='color: #d32f2f; margin: 0 0 0.5rem 0;'>🚨 Erro no Registro da API</h4>
+                        <p style='color: #d32f2f; margin: 0; font-family: monospace;'>{send_result}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.info(f"📝 **Status da API**: {send_result}")
+
+                # Nova seção: Referências Detalhadas por Palavra
+                st.divider()
+                st.markdown("## 📚 Referências Detalhadas por Palavra")
+                
+                # Verificar se há dados detalhados dos embeddings
+                detailed_embeddings = st.session_state.get('detailed_embeddings', {})
+                
+                if detailed_embeddings:
+                    # Mostrar estatísticas gerais
+                    total_words = len(detailed_embeddings)
+                    total_refs = sum(len(refs) for refs in detailed_embeddings.values())
+                    
+                    col_stats1, col_stats2, col_stats3 = st.columns(3)
+                    with col_stats1:
+                        st.metric("🔤 Palavras Consultadas", total_words)
+                    with col_stats2:
+                        st.metric("📄 Total Referências", total_refs)
+                    with col_stats3:
+                        avg_refs = total_refs / total_words if total_words > 0 else 0
+                        st.metric("📊 Média por Palavra", f"{avg_refs:.1f}")
+                    
+                    st.markdown("---")
+                    
+                    # Mostrar detalhes por palavra
+                    for word, word_refs in detailed_embeddings.items():
+                        if word_refs:  # Só mostrar palavras que têm referências
+                            with st.expander(f"🔍 **{word.title()}** ({len(word_refs)} referências)", expanded=False):
+                                for i, ref in enumerate(word_refs[:3], 1):  # Mostrar só as 3 melhores
+                                    title = ref.get('title', 'Sem título')
+                                    content = ref.get('content', '')[:200]
+                                    score = ref.get('similarity_score', 0)
+                                    origin = ref.get('origin', 'unknown')
+                                    
+                                    # Card da referência
+                                    st.markdown(f"""
+                                    <div style='background: #f8f9fa; border-left: 4px solid #007bff; padding: 1rem; margin: 0.5rem 0; border-radius: 0.25rem;'>
+                                        <h5 style='margin: 0 0 0.5rem 0; color: #212529;'>#{i} {title}</h5>
+                                        <p style='margin: 0 0 0.5rem 0; color: #6c757d; font-size: 0.9em;'>{content}...</p>
+                                        <div style='display: flex; gap: 1rem; font-size: 0.8em; color: #495057;'>
+                                            <span>📈 Score: {score:.2f}</span>
+                                            <span>🔗 Origem: {origin}</span>
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                else:
+                    st.info("📭 Nenhuma referência detalhada disponível para esta consulta.")
 
                 # Salvar na sessão com ID do post criado
                 st.session_state['last_generated'] = {
@@ -778,7 +882,6 @@ class Texts:
                     )
 
                 # Botão de gerar sempre visível
-                st.markdown("<br>", unsafe_allow_html=True)
                 generate_button = st.button(
                     "🚀 Gerar Post",
                     use_container_width=True,
@@ -788,6 +891,7 @@ class Texts:
 
             # Área de resultado
             with col_result:
+                st.subheader("📄 Resultado")
                 result_container = st.container()
 
                 # Estado inicial
@@ -795,27 +899,8 @@ class Texts:
                     st.session_state
                 ):
                     with result_container:
-                        st.markdown("""
-                        <div style="
-                            background: #f8f9fa;
-                            padding: 40px;
-                            border-radius: 15px;
-                            border: 2px dashed #dee2e6;
-                            text-align: center;
-                            min-height: 400px;
-                            display: flex;
-                            flex-direction: column;
-                            justify-content: center;
-                        ">
-                            <h3 style="color: #6c757d;">📄 Resultado</h3>
-                            <p style="color: #6c757d;">
-                                O post gerado aparecerá aqui
-                            </p>
-                            <div style="margin-top: 20px; font-size: 48px;">
-                                🤖
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        with st.container():
+                            st.info("O post gerado aparecerá aqui")
 
                 # Exibir último resultado se existe
                 elif 'last_generated' in st.session_state:
@@ -824,41 +909,19 @@ class Texts:
                         st.toast("Post anterior carregado", icon="📄")
 
                         # Mostrar informações do post anterior
-                        st.markdown(f"""
-                        <div style="
-                            background: #e7f3ff;
-                            padding: 10px;
-                            border-radius: 6px;
-                            margin-bottom: 15px;
-                            font-size: 12px;
-                            border-left: 3px solid #007bff;
-                        ">
-                            📱 {last_data.get('platform', 'N/A')} • 📝 {
-                            last_data.get('tone', 'N/A').title()} •
-                            🎨 {last_data.get(
-                                'creativity', 'N/A'
-                            ).title()} • 📏 {last_data.get('length', 'N/A')}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.info(f"""
+                        📱 {
+                            last_data.get('platform', 'N/A')
+                        } • 📝 {last_data.get('tone', 'N/A').title()} •
+                        🎨 {last_data.get('creativity', 'N/A').title()} • 📏 {
+                            last_data.get('length', 'N/A')
+                        }
+                        """)
 
                         # Mostrar texto anterior
-                        formatted_text = last_data.get('text', '').replace(
-                            '\n', '<br>'
-                        )
-                        st.markdown(f"""
-                        <div style="
-                            background: white;
-                            padding: 20px;
-                            border-radius: 10px;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                            border: 1px solid #e9ecef;
-                            margin-bottom: 15px;
-                            line-height: 1.6;
-                            font-size: 15px;
-                        ">
-                        {formatted_text}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        with st.container():
+                            st.markdown("**📄 Post Anterior:**")
+                            st.markdown(last_data.get('text', ''))
 
             # Processar geração se botão foi clicado
             if generate_button:
@@ -898,17 +961,12 @@ class Texts:
                     )
 
         elif 'create' not in permissions:
-            st.markdown("""
-            <div style="text-align: center; padding: 50px;
-                background: #fff3cd; border-radius: 15px;
-                border: 1px solid #ffeaa7;">
-                <h3 style="color: #856404;">🔒 Acesso Restrito</h3>
-                <p style="color: #856404; font-size: 1.1rem;">
-                    Você não possui permissão para gerar posts.<br>
-                    Entre em contato com o administrador do sistema.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.warning("""
+            **🔒 Acesso Restrito**
+
+            Você não possui permissão para gerar posts.
+            Entre em contato com o administrador do sistema.
+            """)
 
     def render(self, token, menu_position, permissions):
         """
@@ -928,20 +986,15 @@ class Texts:
             texts = TextsRequest().get_texts(token)
 
             if not texts:
-                st.markdown("""
-                <div style="text-align: center; padding: 50px;
-                    background: #f8f9fa; border-radius: 15px;
-                    border: 2px dashed #dee2e6;">
-                    <h3 style="color: #6c757d;">📄 Nenhum post encontrado</h3>
-                    <p style="color: #6c757d; font-size: 1.1rem;">
-                        Que tal gerar seu primeiro post usando IA?
-                    </p>
-                    <p style="color: #6c757d;">
-                        Vá para <strong>Gerar post</strong> no menu
-                        para começar.
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
+                col4, col5, col6 = st.columns(3)
+                with col5:
+                    st.info("""
+                    **📄 Nenhum post encontrado**
+
+                    Que tal gerar seu primeiro post usando IA?
+
+                    Vá para **Gerar post** no menu para começar.
+                    """)
                 return
 
             # Filtros
@@ -991,7 +1044,6 @@ class Texts:
             for i, text in enumerate(filtered_texts):
                 # Card do post - mapear is_approved da API para status visual
                 is_approved = text.get('is_approved', False)
-                status_color = '#28a745' if is_approved else '#ffc107'
                 status_emoji = '✅' if is_approved else '⏳'
                 status_text = 'Aprovado' if is_approved else 'Pendente'
 
@@ -1021,57 +1073,44 @@ class Texts:
                         len(text.get('theme', '')) > 100
                     ) else ''
 
-                    st.markdown(f"""
-                    <div style="
-                        background: linear-gradient(145deg, #ffffff, #f8f9fa);
-                        padding: 20px;
-                        border-radius: 15px;
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                        border-left: 5px solid {status_color};
-                        margin-bottom: 15px;
-                        display: flex;
-                        gap: 20px;
-                    ">
-                        <div style="flex: 0 0 300px;">
-                            <h4 style="color: #333; margin-bottom: 10px;">
-                                {status_emoji} {theme_display}
-                            </h4>
-                            <p style="color: #666; margin-bottom: 10px;">
-                                <strong>Status:</strong> <span style="color: {
-                        status_color
-                    };">{status_text}</span>
-                            </p>
-                            <p style="color: #666; margin-bottom: 10px;">
-                                <strong>📅 Data:</strong> {br_date}
-                            </p>
-                            <p style="color: #666; margin-bottom: 15px;">
-                                <strong>📱 Plataforma:</strong> {
-                        PLATFORMS.get(
-                            text.get('platform', 'N/A'), 'N/A')
-                    }
-                            </p>
-                        </div>
-                        <div style="
-                            flex: 1;
-                            background: #f8f9fa;
-                            padding: 15px;
-                            border-radius: 8px;
-                            max-height: 200px;
-                            overflow-y: auto;
-                            border: 1px solid #dee2e6;
-                        ">
-                            <h5 style="color: #333; margin-bottom: 10px;">
-                                📄 Conteúdo:
-                            </h5>
-                            <div style="color: #555;
-                                font-size: 0.9rem; line-height: 1.4;">
-                                {content_text[:500]}{'...' if len(
-                        content_text
-                    ) > 500 else ''}
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    with st.container():
+                        # Header do post
+                        col_header, col_status = st.columns([3, 1])
+
+                        with col_header:
+                            st.subheader(f"{status_emoji} {theme_display}")
+
+                        with col_status:
+                            if is_approved:
+                                st.success(status_text)
+                            else:
+                                st.warning(status_text)
+
+                        # Informações do post em colunas
+                        col_info, col_content = st.columns([1, 2])
+
+                        with col_info:
+                            st.markdown(f"**📅 Data:** {br_date}")
+                            st.markdown(f"""**📱 Plataforma:** {
+                                PLATFORMS.get(
+                                    text.get('platform', 'N/A'), 'N/A'
+                                )
+                            }""")
+
+                        with col_content:
+                            st.markdown("**📄 Conteúdo:**")
+                            st.text_area(
+                                "Preview",
+                                value=content_text[:500] + (
+                                    '...' if len(content_text) > 500 else ''
+                                ),
+                                height=100,
+                                disabled=True,
+                                label_visibility="collapsed",
+                                key=f"preview_{i}"
+                            )
+
+                        st.divider()
 
                     # Botões de ação para cada post (sempre visíveis)
                     col_btn1, col_btn2, col_btn3 = st.columns(3)
@@ -1166,17 +1205,12 @@ class Texts:
                     icon="📄")
 
         elif 'read' not in permissions:
-            st.markdown("""
-            <div style="text-align: center; padding: 50px;
-                background: #fff3cd; border-radius: 15px;
-                border: 1px solid #ffeaa7;">
-                <h3 style="color: #856404;">🔒 Acesso Restrito</h3>
-                <p style="color: #856404; font-size: 1.1rem;">
-                    Você não possui permissão para visualizar posts.<br>
-                    Entre em contato com o administrador do sistema.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.warning("""
+            **🔒 Acesso Restrito**
+
+            Você não possui permissão para visualizar posts.
+            Entre em contato com o administrador do sistema.
+            """)
 
     def update(self, token, menu_position, permissions):
         """
@@ -1196,16 +1230,13 @@ class Texts:
             texts = TextsRequest().get_texts(token)
 
             if not texts:
-                st.markdown("""
-                <div style="text-align: center; padding: 50px;
-                    background: #f8f9fa; border-radius: 15px;
-                    border: 2px dashed #dee2e6;">
-                    <h3 style="color: #6c757d;">📄 Nenhum post encontrado</h3>
-                    <p style="color: #6c757d; font-size: 1.1rem;">
-                        Não há posts disponíveis para edição.
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
+                col4, col5, col6 = st.columns(3)
+                with col5:
+                    st.info("""
+                    **📄 Nenhum post encontrado**
+
+                    Não há posts disponíveis para edição.
+                    """)
                 return
 
             # Seleção do post no menu superior
@@ -1262,8 +1293,6 @@ class Texts:
                     # Converter de volta para o valor da API
                     new_approval_status = new_status_display == "✅ Aprovado"
 
-                    st.markdown("</div>", unsafe_allow_html=True)
-
                 with col_preview:
 
                     st.subheader("👁️ Prévia das Alterações")
@@ -1295,15 +1324,12 @@ class Texts:
 
                         **📊 Caracteres:** {len(new_topic)}/500""")
 
-                    st.markdown("</div>", unsafe_allow_html=True)
-
                 # Validação e botão de atualização
                 if new_topic:
                     validated_topic, topic_data = self.validate_topic(
                         new_topic)
 
                     if validated_topic and has_changes:
-                        st.markdown("<br>", unsafe_allow_html=True)
                         col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
 
                         with col_btn2:
@@ -1343,31 +1369,22 @@ class Texts:
                     content_text = text_data.get(
                         'content', text_data.get(
                             'generated_text', 'Post não disponível'))
-                    st.markdown(f"""
-                    <div style="
-                        background: #f8f9fa;
-                        padding: 20px;
-                        border-radius: 10px;
-                        max-height: 400px;
-                        overflow-y: auto;
-                        border: 1px solid #dee2e6;
-                    ">
-                        {content_text}
-                    </div>
-                    """, unsafe_allow_html=True)
+
+                    st.text_area(
+                        "Conteúdo completo do post:",
+                        value=content_text,
+                        height=400,
+                        disabled=True,
+                        label_visibility="collapsed"
+                    )
 
         elif 'update' not in permissions:
-            st.markdown("""
-            <div style="text-align: center; padding: 50px;
-                background: #fff3cd; border-radius: 15px;
-                border: 1px solid #ffeaa7;">
-                <h3 style="color: #856404;">🔒 Acesso Restrito</h3>
-                <p style="color: #856404; font-size: 1.1rem;">
-                    Você não possui permissão para atualizar posts.<br>
-                    Entre em contato com o administrador do sistema.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.warning("""
+            **🔒 Acesso Restrito**
+
+            Você não possui permissão para atualizar posts.
+            Entre em contato com o administrador do sistema.
+            """)
 
     def main_menu(self, token, permissions):
         """

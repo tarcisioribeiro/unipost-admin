@@ -1,7 +1,6 @@
 from api.token import Token
 from texts.main import Texts
 from dashboard.main import Dashboard
-from config.main import ConfigModule
 from dictionary.vars import HELP_MENU
 import streamlit as st
 
@@ -16,14 +15,10 @@ class HomePage:
         """
         Exibe o dialog de ajuda com manual de uso das funcionalidades.
         """
-        st.markdown("""
-        <div style="text-align: center; margin-bottom: 20px;">
-            <h3 style="color: #1f77b4;">📚 Como usar o UniPost</h3>
-            <p style="color: #666;">
-                Selecione uma funcionalidade para ver as instruções detalhadas
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.header("📚 Como usar o UniPost")
+        st.caption(
+            "Selecione uma funcionalidade para ver as instruções detalhadas"
+        )
 
         # Selectbox com as opções de ajuda
         selected_help = st.selectbox(
@@ -39,7 +34,6 @@ class HomePage:
             st.markdown(HELP_MENU[selected_help])
 
         # Botão para fechar
-        st.markdown("<br>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
             if st.button("✅ Fechar", use_container_width=True, type="primary"):
@@ -67,39 +61,18 @@ class HomePage:
             "🤖 Geração de Conteúdo": Texts,
         }
 
-        # Adicionar opção de configurações apenas para usuários com permissão
-        config_module = ConfigModule()
-        if config_module.check_permissions(st.session_state.user_permissions):
-            menu_options["⚙️ Configurações"] = ConfigModule
-
         with st.sidebar:
-            st.markdown("""
-            <div style="text-align: center; padding: 20px 0;">
-                <h2 style="color: #1f77b4; margin-bottom: 5px;">📚 UniPost</h2>
-                <p style="color: #666; font-size: 0.9rem;">
-                    Gerador automático de Posts com IA
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.title("📚 UniPost")
+            st.caption("Gerador automático de Posts com IA")
 
             st.divider()
 
             # Informações do usuário
             if 'user_name' in st.session_state:
-                st.markdown(f"""
-                <div style="
-                    background: linear-gradient(90deg, #667eea 0%,
-                        #764ba2 100%);
-                    padding: 15px;
-                    border-radius: 10px;
-                    margin-bottom: 20px;
-                    color: white;
-                    text-align: center;
-                ">
-                    <strong>👤 {st.session_state.user_name}</strong><br>
-                    <small>Usuário ativo</small>
-                </div>
-                """, unsafe_allow_html=True)
+                with st.container():
+                    st.info(
+                        f"👤 **{st.session_state.user_name}**\n\nUsuário ativo"
+                    )
 
             st.subheader("Menu")
 
@@ -111,7 +84,6 @@ class HomePage:
             )
 
             # Botão de ajuda
-            st.markdown("<br>", unsafe_allow_html=True)
             help_button = st.button(
                 "❓ Ajuda",
                 use_container_width=True,
@@ -140,12 +112,7 @@ class HomePage:
                 st.rerun()
 
         selected_class = menu_options[selected_option]
-
-        # Tratar chamada específica para ConfigModule
-        if selected_class == ConfigModule:
-            selected_class().main(st.session_state.user_permissions)
-        else:
-            selected_class().main_menu(
-                st.session_state.token,
-                st.session_state.user_permissions
-            )
+        selected_class().main_menu(
+            st.session_state.token,
+            st.session_state.user_permissions
+        )

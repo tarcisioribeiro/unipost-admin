@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: unipost-streamlit
+    restart: unless-stopped
     ports:
       - "8555:8555"
     environment:
@@ -20,6 +21,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: unipost-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -31,6 +33,7 @@ services:
   redis-commander:
     image: rediscommander/redis-commander:latest
     container_name: unipost-redis-commander
+    restart: unless-stopped
     ports:
       - "8081:8081"
     environment:

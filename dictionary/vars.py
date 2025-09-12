@@ -83,12 +83,10 @@ HELP_MENU = {
     • **Configurações Avançadas**: Tamanho, hashtags e call-to-action
 
     **Processo Inteligente:**
-    1. Sistema busca referências no ElasticSearch
-    2. Vetoriza conteúdos com SentenceTransformers
-    3. Armazena vetores no Redis para performance
-    4. Encontra textos similares ao seu tema
-    5. Gera conteúdo usando OpenAI GPT
-    6. Salva automaticamente na API
+    1. Sistema busca referências na base de dados
+    2. Encontra textos similares ao seu tema
+    3. Gera conteúdo usando OpenAI GPT
+    4. Salva automaticamente na API
 
     **Dicas:**
     - Seja específico no tema para melhores resultados
