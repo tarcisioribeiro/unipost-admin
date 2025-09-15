@@ -297,7 +297,9 @@ class TextsRequest:
                 error_msg = error_data.get("error", "Dados inválidos")
                 result["message"] = f"❌ Erro na aprovação: {error_msg}"
             else:
-                result["message"] = f"❌ Erro na aprovação. Status: {response.status_code}"
+                result[
+                    "message"
+                ] = f"""❌ Erro na aprovação. Status: {response.status_code}"""
 
         except requests.exceptions.RequestException as e:
             result["message"] = f"❌ Erro de conexão: {str(e)}"
@@ -355,14 +357,24 @@ class TextsRequest:
                 result["success"] = True
                 result["message"] = "✅ Embedding gerado com sucesso!"
             else:
-                result["message"] = f"❌ Erro na geração do embedding. Status: {response.status_code}"
+                result[
+                    "message"
+                ] = f"""❌ Erro na geração do embedding. Status: {
+                    response.status_code
+                }"""
 
         except requests.exceptions.RequestException as e:
             result["message"] = f"❌ Erro de conexão: {str(e)}"
 
         return result
 
-    def approve_and_generate_embedding(self, token, text_id, text_content, text_theme):
+    def approve_and_generate_embedding(
+        self,
+        token,
+        text_id,
+        text_content,
+        text_theme
+    ):
         """
         Aprova um texto e gera seu embedding em sequência.
 
@@ -389,12 +401,18 @@ class TextsRequest:
             return approval_result["message"]
 
         # Depois gera o embedding
-        embedding_result = self.generate_embedding(token, text_content, text_theme)
+        embedding_result = self.generate_embedding(
+            token,
+            text_content,
+            text_theme
+        )
 
         if embedding_result["success"]:
             return "✅ Texto aprovado e embedding gerado com sucesso!"
         else:
-            return f"✅ Texto aprovado, mas erro no embedding: {embedding_result['message']}"
+            return f"""✅ Texto aprovado, mas erro no embedding: {
+                embedding_result['message']
+            }"""
 
     def reject_text_via_webhook(self, text_id):
         """

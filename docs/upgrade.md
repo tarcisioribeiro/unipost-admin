@@ -4,7 +4,11 @@ Este é um pedido de upgrade, vou detalha-lo para que possa entender mais precis
 
 ---
 
+Preciso que melhore as tabelas de estatísticas que estão na sessão dashboard, pois algumas colunas estão sem tradução.
 
+Esta é a imagem que reporta o problema:
+
+file:///home/tarcisio/Pictures/Screenshots/Screenshot_2025-09-12-16-13-27.png
 
 ---
 

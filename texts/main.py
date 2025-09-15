@@ -169,7 +169,7 @@ class Texts:
                 progress_bar.progress(30)
 
                 # Consultar por palavras individuais
-                embeddings_by_word = self.embeddings_service.query_embeddings_by_individual_words(
+                embeddings_by_word = self.embeddings_service.query_embeddings_by_individual_words(  # noqa: E501
                     search_query
                 )
 
@@ -293,7 +293,7 @@ class Texts:
                 "theme": user_topic,
                 "platform": platform if platform else "GENERIC",
                 "content": generated_text,
-                "is_approved": False  # Sempre False inicialmente - embedding será gerado após aprovação
+                "is_approved": False
             }
 
             # Registrar na API do projeto unipost-api
@@ -312,13 +312,17 @@ class Texts:
                 logger.error(f"Error registering in API: {api_error}")
                 send_result = {
                     "success": False,
-                    "message": f"""❌ **Erro ao registrar na API**: {str(api_error)}""",
+                    "message": f"""❌ **Erro ao registrar na API**: {
+                        str(api_error)
+                    }""",
                     "text_id": None
                 }
                 created_text_id = None
 
             progress_bar.progress(100)
-            status_text.text("✅ Post salvo! Embedding será gerado após aprovação.")
+            status_text.text(
+                "✅ Post salvo! Embedding será gerado após aprovação."
+            )
 
             # Processamento concluído
 
@@ -370,9 +374,14 @@ class Texts:
                     ):
                         # Aprovar post e gerar embedding
                         if created_text_id:
-                            with st.spinner("Aprovando post e gerando embedding..."):
-                                approval_result = TextsRequest().approve_and_generate_embedding(
-                                    token, created_text_id, generated_text, user_topic
+                            with st.spinner(
+                                "Aprovando post e gerando embedding..."
+                            ):
+                                approval_result = TextsRequest().approve_and_generate_embedding(  # noqa: E501
+                                    token,
+                                    created_text_id,
+                                    generated_text,
+                                    user_topic
                                 )
                             st.toast(approval_result, icon="✅")
 
@@ -382,7 +391,10 @@ class Texts:
                                 ]['approved'] = True
                             st.rerun()
                         else:
-                            st.toast("Erro: ID do texto não encontrado", icon="❌")
+                            st.toast(
+                                "Erro: ID do texto não encontrado",
+                                icon="❌"
+                            )
 
                 # Botão Reprovar
                 with col_reject:
@@ -407,7 +419,10 @@ class Texts:
                                 ]['approved'] = False
                             st.rerun()
                         else:
-                            st.toast("Erro: ID do texto não encontrado", icon="❌")
+                            st.toast(
+                                "Erro: ID do texto não encontrado",
+                                icon="❌"
+                            )
 
                 # Botão Regenerar (sempre ativo)
                 with col_regenerate:
@@ -675,7 +690,13 @@ class Texts:
                     if created_text_id:
                         st.info(f"🆔 **ID do texto**: {created_text_id}")
                 else:
-                    st.error(f"🚨 **Erro no Registro da API**\n\n{send_result.get('message', 'Erro desconhecido')}")
+                    st.error(
+                        f"""🚨 **Erro no Registro da API**\n\n{send_result.get(
+                            'message',
+                            'Erro desconhecido'
+                            )
+                        }"""
+                    )
 
                 # Nova seção: Referências Detalhadas por Palavra
                 st.divider()
@@ -745,7 +766,7 @@ class Texts:
                     'creativity': creativity_level,
                     'length': length,
                     'text_data': text_data,  # Dados enviados para API
-                    'approved': approval_sent,
+                    'approved': False,  # Texto criado sem aprovação inicial
                     'theme': user_topic
                 }
 
@@ -1143,10 +1164,12 @@ class Texts:
                                     help="Aprovar & Gerar Embedding",
                                     use_container_width=True
                                 ):
-                                    with st.spinner("Aprovando e gerando embedding..."):
+                                    with st.spinner(
+                                        "Aprovando e gerando embedding..."
+                                    ):
                                         text_content = text.get('content', '')
                                         text_theme = text.get('theme', '')
-                                        result = TextsRequest().approve_and_generate_embedding(
+                                        result = TextsRequest().approve_and_generate_embedding(  # noqa: E501
                                             token,
                                             text_id,
                                             text_content,
