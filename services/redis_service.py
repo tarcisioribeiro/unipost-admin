@@ -15,7 +15,12 @@ class RedisService:
     Responsável pelo armazenamento em cache dos embeddings obtidos via API.
     """
 
-    def __init__(self, host: str = None, port: int = 6379, db: int = 0):
+    def __init__(
+            self,
+            host: str = None,  # type: ignore
+            port: int = 6379,
+            db: int = 0
+    ):
         """
         Inicializa o cliente Redis.
 
@@ -48,7 +53,7 @@ class RedisService:
                     decode_responses=True
                 )
                 logger.info(f"Redis client initialized: {host}:{port}")
-            
+
             self.client.ping()
         except Exception as e:
             logger.error(f"Error initializing Redis client: {e}")
@@ -75,21 +80,25 @@ class RedisService:
             if not self.client:
                 return
 
-            cache_key = f"word_embeddings:{hashlib.md5(word.encode()).hexdigest()}"
-            
+            cache_key = f"""word_embeddings:{
+                hashlib.md5(word.encode()).hexdigest()
+            }"""
+
             cache_data = {
                 "word": word,
                 "embeddings": embeddings_data,
                 "cached_at": datetime.now().isoformat(),
                 "total_found": len(embeddings_data)
             }
-            
+
             self.client.setex(
                 cache_key,
                 expiration,
                 json.dumps(cache_data, ensure_ascii=False)
             )
-            logger.info(f"Word embeddings cached: {word} ({len(embeddings_data)} results)")
+            logger.info(f"""Word embeddings cached: {
+                word
+            } ({len(embeddings_data)} results)""")
         except Exception as e:
             logger.error(f"Error caching word embeddings: {e}")
 
@@ -111,15 +120,21 @@ class RedisService:
             if not self.client:
                 return None
 
-            cache_key = f"word_embeddings:{hashlib.md5(word.encode()).hexdigest()}"
+            cache_key = f"""word_embeddings:{
+                hashlib.md5(word.encode()).hexdigest()
+            }"""
             cached_data = self.client.get(cache_key)
-            
+
             if cached_data:
-                data = json.loads(cached_data)
+                data = json.loads(cached_data)  # type: ignore
                 embeddings = data.get("embeddings", [])
-                logger.info(f"Retrieved cached embeddings for word: {word} ({len(embeddings)} results)")
+                logger.info(
+                    f"""Retrieved cached embeddings for word: {
+                        word
+                    } ({len(embeddings)} results)"""
+                )
                 return embeddings
-            
+
             return None
         except Exception as e:
             logger.error(f"Error retrieving cached word embeddings: {e}")

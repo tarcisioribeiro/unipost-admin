@@ -174,39 +174,48 @@ class EmbeddingsService:
     ) -> Dict[str, List[Dict]]:
         """
         Consulta embeddings por palavras individuais do texto.
-        
+
         Parameters
         ----------
         query_text : str
             Texto para dividir em palavras e buscar individualmente
-            
+
         Returns
         -------
         Dict[str, List[Dict]]
-            Dicionário com cada palavra como chave e lista de embeddings como valor
+            Dicionário com cada palavra como chave e lista de embeddings
         """
         try:
             # Dividir texto em palavras (remover pontuação e espaços)
             import re
-            words = re.findall(r'\b[a-záàâãéèêíìîóòôõúùûç]+\b', query_text.lower())
-            
+            words = re.findall(
+                r'\b[a-záàâãéèêíìîóòôõúùûç]+\b', query_text.lower()
+            )
+
             # Remover palavras muito curtas (menos de 3 caracteres)
             words = [word for word in words if len(word) >= 3]
-            
+
             # Remover duplicatas mantendo ordem
             words = list(dict.fromkeys(words))
-            
+
             results_by_word = {}
-            
+
             for word in words:
                 # Verificar cache primeiro para esta palavra
                 cached_embeddings = None
                 if self.redis_service:
                     try:
-                        cached_embeddings = self.redis_service.get_cached_embeddings_by_word(word)
+                        cached_embeddings = (
+                            self.redis_service.get_cached_embeddings_by_word(
+                                word
+                            )
+                        )
                     except Exception as e:
-                        logger.warning(f"Error accessing Redis cache for word '{word}': {e}")
-                
+                        logger.warning(
+                            f"""Error accessing Redis cache for word '{
+                                word
+                            }': {e}""")
+
                 if cached_embeddings:
                     results_by_word[word] = cached_embeddings
                     logger.info(f"Using cached embeddings for word: {word}")
@@ -215,17 +224,30 @@ class EmbeddingsService:
                     word_embeddings = self.query_embeddings_by_text(word)
                     if word_embeddings:
                         results_by_word[word] = word_embeddings
-                        
+
                         # Cache os resultados da palavra individual
                         if self.redis_service:
                             try:
-                                self.redis_service.cache_embeddings_by_word(word, word_embeddings)
+                                self.redis_service.cache_embeddings_by_word(
+                                    word,
+                                    word_embeddings
+                                )
                             except Exception as e:
-                                logger.warning(f"Error caching embeddings for word '{word}': {e}")
-                    
-            logger.info(f"Consulted {len(words)} individual words, found results for {len(results_by_word)} words")
+                                logger.warning(
+                                    f"""Error caching embeddings for word '{
+                                        word
+                                    }': {e}"""
+                                )
+
+            logger.info(
+                f"""Consulted {
+                    len(words)
+                } individual words, found results for {
+                    len(results_by_word)
+                } words"""
+            )
             return results_by_word
-            
+
         except Exception as e:
             logger.error(f"Error querying embeddings by individual words: {e}")
             return {}
