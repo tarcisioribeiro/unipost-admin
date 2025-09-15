@@ -1,5 +1,4 @@
 import streamlit as st
-import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime, timedelta
@@ -96,7 +95,9 @@ class Dashboard:
 
         # Adicionar colunas processadas
         df['created_date'] = pd.to_datetime(df['created_at'].str[:10])
-        df['month_year'] = df['created_date'].dt.to_period('M').astype(str)
+        # Formatação de mês em português brasileiro
+        df['month_year_period'] = df['created_date'].dt.to_period('M')
+        df['month_year'] = df['created_date'].dt.strftime('%m/%Y')
         df['platform_name'] = df['platform'].map(PLATFORMS)
         df['status_text'] = df['is_approved'].map(
             {
@@ -151,45 +152,56 @@ class Dashboard:
 
         st.divider()
 
+        # Seção de gráficos
+        st.divider()
+
         # Gráficos em duas colunas
         col_left, col_right = st.columns(2)
 
         with col_left:
-            # Gráfico de status (pizza)
+            # Gráfico de status (pizza 3D)
             st.markdown("### 📊 Status dos Textos")
             status_data = df['status_text'].value_counts()
 
-            fig_status = px.pie(
+            # Cores com gradiente 3D
+            status_colors = ['#1f77b4', '#ff7f0e']  # Azul e laranja clássicos
+
+            fig_status = go.Figure(data=[go.Pie(
+                labels=status_data.index,
                 values=status_data.values,
-                names=status_data.index,
-                title="Distribuição por Status",
-                color_discrete_map={
-                    'Aprovado': '#28a745',
-                    'Pendente': '#ffc107'
-                },
-                hole=0.3
-            )
+                textinfo='label+percent+value',
+                textposition='auto',
+                textfont=dict(size=12, color='white', family="Courier New"),
+                marker=dict(
+                    colors=status_colors,
+                    line=dict(color='#000000', width=2)
+                ),
+                pull=[0.1, 0],
+                sort=False
+            )])
+
             fig_status.update_layout(
+                title=dict(
+                    text="Status Distribution",
+                    x=0.5,
+                    font=dict(size=16, color='#333333', family="Courier New")
+                ),
                 height=400,
-                title_font_size=16,
-                title_x=0.5,
                 showlegend=True,
                 legend=dict(
                     orientation="h",
                     yanchor="bottom",
-                    y=-0.2,
+                    y=-0.1,
                     xanchor="center",
-                    x=0.5
+                    x=0.5,
+                    font=dict(size=11, family="Courier New")
                 ),
-                margin=dict(t=50, b=50, l=50, r=50)
+                margin=dict(t=50, b=50, l=50, r=50),
+                font=dict(family="Courier New, monospace"),
+                paper_bgcolor='rgba(248,249,250,1)',
+                plot_bgcolor='rgba(248,249,250,1)'
             )
-            fig_status.update_traces(
-                textposition='inside',
-                textinfo='percent+label',
-                textfont_size=12,
-                pull=[0.05 if status == 'Aprovado' else 0
-                      for status in status_data.index]
-            )
+
             st.plotly_chart(fig_status, use_container_width=True)
 
         with col_right:
@@ -197,29 +209,34 @@ class Dashboard:
             st.markdown("### 🌐 Textos por Plataforma")
             platform_data = df['platform_name'].value_counts()
 
-            # Criar cores distintas para cada plataforma
-            colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-                      '#FFEAA7', '#DDA0DD', '#98D8C8', '#F06292']
+            # Cores 3D clássicas
+            platform_colors = [
+                '#2ca02c', '#d62728', '#9467bd', '#8c564b',
+                '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+            ]
 
             fig_platform = go.Figure(data=[go.Pie(
                 labels=platform_data.index,
                 values=platform_data.values,
-                hole=0.3,
                 textinfo='label+percent+value',
                 textposition='auto',
+                textfont=dict(size=11, color='white', family="Courier New"),
                 marker=dict(
-                    colors=colors[:len(platform_data)],
-                    line=dict(color='#FFFFFF', width=2)
+                    colors=platform_colors[:len(platform_data)],
+                    line=dict(color='#000000', width=2)
                 ),
-                pull=[0.1 if i == 0 else 0.05 for i in range(
-                    len(platform_data))
-                ]
+                pull=[
+                    0.1 if i == 0 else 0.05 for i in range(len(platform_data))
+                ],
+                sort=False
             )])
 
             fig_platform.update_layout(
-                title="Distribuição por Plataforma",
-                title_font_size=16,
-                title_x=0.5,
+                title=dict(
+                    text="Platform Distribution",
+                    x=0.5,
+                    font=dict(size=16, color='#333333', family="Courier New")
+                ),
                 height=400,
                 showlegend=True,
                 legend=dict(
@@ -227,15 +244,15 @@ class Dashboard:
                     yanchor="middle",
                     y=0.5,
                     xanchor="left",
-                    x=1.05
+                    x=1.02,
+                    font=dict(size=10, family="Courier New")
                 ),
                 margin=dict(t=50, b=50, l=50, r=120),
-                scene=dict(
-                    xaxis=dict(visible=False),
-                    yaxis=dict(visible=False),
-                    zaxis=dict(visible=False)
-                )
+                font=dict(family="Courier New, monospace"),
+                paper_bgcolor='rgba(248,249,250,1)',
+                plot_bgcolor='rgba(248,249,250,1)'
             )
+
             st.plotly_chart(fig_platform, use_container_width=True)
 
         # Gráfico de linha temporal
@@ -243,7 +260,10 @@ class Dashboard:
 
         # Agrupar por mês
         monthly_data = df.groupby(
-            ['month_year', 'status_text']).size().unstack(fill_value=0)
+            ['month_year_period', 'status_text']).size().unstack(fill_value=0)
+
+        # Converter índice Period para string para compatibilidade com Plotly
+        monthly_data.index = monthly_data.index.astype(str)
 
         fig_timeline = go.Figure()
 
@@ -320,6 +340,9 @@ class Dashboard:
                 platform_summary['Aprovados'] / platform_summary['Total'] * 100
             ).round(1).astype(str) + '%'
 
+            # Renomear o índice para português
+            platform_summary.index.name = 'Plataforma'
+
             st.dataframe(
                 platform_summary,
                 use_container_width=True,
@@ -357,6 +380,9 @@ class Dashboard:
                 monthly_summary['Aprovados']
             monthly_summary = monthly_summary.sort_index(
                 ascending=False).head(6)  # Últimos 6 meses
+
+            # Renomear o índice para português
+            monthly_summary.index.name = 'Período'
 
             st.dataframe(
                 monthly_summary,
@@ -398,20 +424,21 @@ class Dashboard:
                     top_platform
                 } ({top_platform_count} textos)""")
 
-            # Taxa de aprovação
+            # Taxa de aprovação - exibir como métrica permanente
             approval_rate = (
                 approved_texts /
                 total_texts *
                 100) if total_texts > 0 else 0
+
             if approval_rate >= 80:
-                st.toast(
-                    f"Taxa de aprovação: {approval_rate:.1f}%", icon="✅")
+                icon = "📊"
             elif approval_rate >= 60:
-                st.toast(
-                    f"Taxa moderada: {approval_rate:.1f}%", icon="⚠️")
+                icon = "📈"
             else:
-                st.toast(
-                    f"Taxa baixa: {approval_rate:.1f}%", icon="❌")
+                icon = "📉"
+
+            st.info(
+                f"{icon} **Taxa de aprovação geral:** {approval_rate:.1f}%")
 
         with insights_col2:
             # Textos criados nos últimos 7 dias
