@@ -163,19 +163,21 @@ class Texts:
                 status_text.text("✅ Embeddings encontrados no cache")
             else:
                 # 2. Busca via API de embeddings (por palavras individuais)
-                status_text.text("🔍 Buscando embeddings por palavras individuais...")
+                status_text.text(
+                    "🔍 Buscando embeddings por palavras individuais..."
+                )
                 progress_bar.progress(30)
 
                 # Consultar por palavras individuais
                 embeddings_by_word = self.embeddings_service.query_embeddings_by_individual_words(
                     search_query
                 )
-                
+
                 # Agregar todos os resultados para manter compatibilidade
                 raw_texts = []
                 for word, word_embeddings in embeddings_by_word.items():
                     raw_texts.extend(word_embeddings)
-                
+
                 # Remover duplicatas baseado no ID
                 seen_ids = set()
                 unique_texts = []
@@ -184,9 +186,9 @@ class Texts:
                     if text_id not in seen_ids:
                         seen_ids.add(text_id)
                         unique_texts.append(text)
-                
+
                 raw_texts = unique_texts
-                
+
                 # Armazenar dados detalhados para mostrar depois
                 st.session_state['detailed_embeddings'] = embeddings_by_word
 
@@ -283,19 +285,15 @@ class Texts:
                 st.toast("Erro na geração de post via IA", icon="❌")
                 return
 
-            # 8. Envio para aprovação via webhook
-            status_text.text("📤 Enviando para aprovação...")
+            # 8. Salvar no banco de dados da API UniPost (SEM EMBEDDING)
+            status_text.text("💾 Salvando post no banco de dados...")
             progress_bar.progress(95)
 
-            approval_sent = self.text_service.send_for_approval(
-                generated_text, user_topic)
-
-            # 9. Salvar no banco de dados da API UniPost
             text_data = {
                 "theme": user_topic,
                 "platform": platform if platform else "GENERIC",
                 "content": generated_text,
-                "is_approved": False  # Sempre False inicialmente
+                "is_approved": False  # Sempre False inicialmente - embedding será gerado após aprovação
             }
 
             # Registrar na API do projeto unipost-api
@@ -306,12 +304,21 @@ class Texts:
                 )
                 logger.info(
                     f"Text successfully registered in API: {send_result}")
+
+                # Armazenar o ID do texto para usar nos botões de aprovação
+                created_text_id = send_result.get("text_id")
+
             except Exception as api_error:
                 logger.error(f"Error registering in API: {api_error}")
-                send_result = f"❌ **Erro ao registrar na API**: {str(api_error)}"
+                send_result = {
+                    "success": False,
+                    "message": f"""❌ **Erro ao registrar na API**: {str(api_error)}""",
+                    "text_id": None
+                }
+                created_text_id = None
 
             progress_bar.progress(100)
-            status_text.text("✅ Processo concluído com sucesso!")
+            status_text.text("✅ Post salvo! Embedding será gerado após aprovação.")
 
             # Processamento concluído
 
@@ -352,46 +359,55 @@ class Texts:
                 st.markdown("**🎛️ Ações:**")
                 col_approve, col_reject, col_regenerate = st.columns(3)
 
-                # Botão Aprovar/Aprovado
+                # Botão Aprovar - Gerar embedding quando aprovado
                 with col_approve:
-                    approve_disabled = approval_sent
                     if st.button(
-                        "✅ Aprovar" if not approval_sent else "✅ Aprovado",
+                        "✅ Aprovar & Gerar Embedding",
                         key="approve_generated",
                         use_container_width=True,
-                        type="secondary" if not approve_disabled else (
-                            "primary"
-                        ),
-                        disabled=approve_disabled,
-                        help="Marcar como aprovado" if not approve_disabled
-                        else "Já foi para aprovação"
+                        type="primary",
+                        help="Aprovar post e gerar embedding"
                     ):
-                        # Simular aprovação (post já foi registrado na API)
-                        st.toast("Status atualizado para aprovado!", icon="✅")
-                        if 'last_generated' in st.session_state:
-                            st.session_state[
-                                'last_generated'
-                            ]['approved'] = True
-                        st.rerun()
+                        # Aprovar post e gerar embedding
+                        if created_text_id:
+                            with st.spinner("Aprovando post e gerando embedding..."):
+                                approval_result = TextsRequest().approve_and_generate_embedding(
+                                    token, created_text_id, generated_text, user_topic
+                                )
+                            st.toast(approval_result, icon="✅")
 
-                # Botão Reprovar/Reprovado
+                            if 'last_generated' in st.session_state:
+                                st.session_state[
+                                    'last_generated'
+                                ]['approved'] = True
+                            st.rerun()
+                        else:
+                            st.toast("Erro: ID do texto não encontrado", icon="❌")
+
+                # Botão Reprovar
                 with col_reject:
-                    reject_disabled = not approval_sent
                     if st.button(
-                        "❌ Reprovar" if approval_sent else "❌ Reprovado",
+                        "❌ Reprovar",
                         key="reject_generated",
                         use_container_width=True,
-                        type="secondary" if not reject_disabled else "primary",
-                        disabled=reject_disabled,
-                        help="Marcar como reprovado" if not reject_disabled
-                        else "Ainda não foi aprovado"
+                        type="secondary",
+                        help="Marcar como reprovado"
                     ):
-                        st.toast("Status atualizado para reprovado!", icon="❌")
-                        if 'last_generated' in st.session_state:
-                            st.session_state[
-                                'last_generated'
-                            ]['approved'] = False
-                        st.rerun()
+                        # Reprovar post
+                        if created_text_id:
+                            with st.spinner("Reprovando post..."):
+                                rejection_result = TextsRequest().reject_text(
+                                    token, created_text_id
+                                )
+                            st.toast(rejection_result, icon="❌")
+
+                            if 'last_generated' in st.session_state:
+                                st.session_state[
+                                    'last_generated'
+                                ]['approved'] = False
+                            st.rerun()
+                        else:
+                            st.toast("Erro: ID do texto não encontrado", icon="❌")
 
                 # Botão Regenerar (sempre ativo)
                 with col_regenerate:
@@ -654,64 +670,72 @@ class Texts:
                             st.metric("Tipos de Fonte", 0)
 
                 # Mostrar resultado do registro na API
-                if "✅" in send_result or "✓" in send_result or "registrado com sucesso" in send_result:
+                if send_result.get("success"):
                     st.success("✅ **Texto registrado com sucesso na API!**")
-                elif "❌" in send_result or "Erro" in send_result:
-                    st.markdown(f"""
-                    <div style='padding: 1rem; background-color: #ffebee; border: 1px solid #f44336; border-radius: 0.5rem; margin: 1rem 0;'>
-                        <h4 style='color: #d32f2f; margin: 0 0 0.5rem 0;'>🚨 Erro no Registro da API</h4>
-                        <p style='color: #d32f2f; margin: 0; font-family: monospace;'>{send_result}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    if created_text_id:
+                        st.info(f"🆔 **ID do texto**: {created_text_id}")
                 else:
-                    st.info(f"📝 **Status da API**: {send_result}")
+                    st.error(f"🚨 **Erro no Registro da API**\n\n{send_result.get('message', 'Erro desconhecido')}")
 
                 # Nova seção: Referências Detalhadas por Palavra
                 st.divider()
                 st.markdown("## 📚 Referências Detalhadas por Palavra")
-                
+
                 # Verificar se há dados detalhados dos embeddings
-                detailed_embeddings = st.session_state.get('detailed_embeddings', {})
-                
+                detailed_embeddings = st.session_state.get(
+                    'detailed_embeddings',
+                    {}
+                )
+
                 if detailed_embeddings:
                     # Mostrar estatísticas gerais
                     total_words = len(detailed_embeddings)
-                    total_refs = sum(len(refs) for refs in detailed_embeddings.values())
-                    
+                    total_refs = sum(
+                        len(refs) for refs in detailed_embeddings.values()
+                    )
+
                     col_stats1, col_stats2, col_stats3 = st.columns(3)
                     with col_stats1:
                         st.metric("🔤 Palavras Consultadas", total_words)
                     with col_stats2:
                         st.metric("📄 Total Referências", total_refs)
                     with col_stats3:
-                        avg_refs = total_refs / total_words if total_words > 0 else 0
+                        avg_refs = total_refs / total_words if (
+                            total_words > 0
+                        ) else 0
                         st.metric("📊 Média por Palavra", f"{avg_refs:.1f}")
-                    
+
                     st.markdown("---")
-                    
+
                     # Mostrar detalhes por palavra
                     for word, word_refs in detailed_embeddings.items():
-                        if word_refs:  # Só mostrar palavras que têm referências
-                            with st.expander(f"🔍 **{word.title()}** ({len(word_refs)} referências)", expanded=False):
-                                for i, ref in enumerate(word_refs[:3], 1):  # Mostrar só as 3 melhores
+                        if word_refs:  # Só mostrar palavras com referências
+                            with st.expander(
+                                f"""🔍 **{
+                                    word.title()
+                                }** ({len(word_refs)} referências)""",
+                                expanded=False
+                            ):
+                                for i, ref in enumerate(word_refs[:3], 1):
                                     title = ref.get('title', 'Sem título')
                                     content = ref.get('content', '')[:200]
                                     score = ref.get('similarity_score', 0)
                                     origin = ref.get('origin', 'unknown')
-                                    
+
                                     # Card da referência
-                                    st.markdown(f"""
-                                    <div style='background: #f8f9fa; border-left: 4px solid #007bff; padding: 1rem; margin: 0.5rem 0; border-radius: 0.25rem;'>
-                                        <h5 style='margin: 0 0 0.5rem 0; color: #212529;'>#{i} {title}</h5>
-                                        <p style='margin: 0 0 0.5rem 0; color: #6c757d; font-size: 0.9em;'>{content}...</p>
-                                        <div style='display: flex; gap: 1rem; font-size: 0.8em; color: #495057;'>
-                                            <span>📈 Score: {score:.2f}</span>
-                                            <span>🔗 Origem: {origin}</span>
-                                        </div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
+                                    with st.container():
+                                        st.markdown(f"**#{i} {title}**")
+                                        st.text(f"{content}...")
+                                        col_score, col_origin = st.columns(2)
+                                        with col_score:
+                                            st.caption(f"📈 Score: {score:.2f}")
+                                        with col_origin:
+                                            st.caption(f"🔗 Origem: {origin}")
                 else:
-                    st.info("📭 Nenhuma referência detalhada disponível para esta consulta.")
+                    st.info(
+                        """📭 Nenhuma referência detalhada """ +
+                        """disponível para esta consulta."""
+                    )
 
                 # Salvar na sessão com ID do post criado
                 st.session_state['last_generated'] = {
@@ -997,22 +1021,26 @@ class Texts:
                     """)
                 return
 
-            # Filtros
-            st.markdown("### 🔍 Filtros")
-            col_filter1, col_filter2 = st.columns(2)
+            # Filtros compactos
+            col_filter1, col_filter2, col_filter3 = st.columns([2, 2, 1])
 
             with col_filter1:
-                status_filter = st.selectbox(
-                    "Status:",
-                    ["Todos", "Aprovado", "Pendente"],
-                    index=0
+                search_text = st.text_input(
+                    "🔎 Buscar:",
+                    placeholder="Digite palavras-chave...",
+                    label_visibility="collapsed"
                 )
 
             with col_filter2:
-                search_text = st.text_input(
-                    "🔎 Buscar por tema:",
-                    placeholder="Digite palavras-chave do tema..."
+                status_filter = st.selectbox(
+                    "Status",
+                    ["Todos", "Aprovado", "Pendente"],
+                    index=0,
+                    label_visibility="collapsed"
                 )
+
+            with col_filter3:
+                st.metric("Total", len(texts))
 
             # Filtrar posts
             filtered_texts = texts
@@ -1038,171 +1066,163 @@ class Texts:
                 )
                 return
 
-            # Exibir posts em cards
-            st.markdown("### 📋 Lista de Posts")
-
+            # Lista de posts compacta
             for i, text in enumerate(filtered_texts):
-                # Card do post - mapear is_approved da API para status visual
                 is_approved = text.get('is_approved', False)
                 status_emoji = '✅' if is_approved else '⏳'
-                status_text = 'Aprovado' if is_approved else 'Pendente'
 
-                # Usar 'content' da API como post gerado
-                content_text = text.get('content', text.get(
-                    'generated_text', 'Post não disponível'))
+                # Formatação da data
+                created_date = text.get('created_at', 'N/A')
+                if created_date != 'N/A' and len(created_date) >= 10:
+                    try:
+                        from datetime import datetime
+                        date_obj = datetime.strptime(
+                            created_date[:10],
+                            '%Y-%m-%d'
+                        )
+                        br_date = date_obj.strftime('%d/%m')
+                    except Exception:
+                        br_date = created_date[8:10] + '/' + created_date[5:7]
+                else:
+                    br_date = '--'
 
-                # Container principal do card
+                theme_display = text.get('theme', 'Sem título')
+                content_text = text.get(
+                    'content',
+                    text.get('generated_text', '')
+                )
+                word_count = len(content_text.split()) if content_text else 0
+
+                # Card compacto
                 with st.container():
-                    # Formatação da data brasileira
-                    created_date = text.get('created_at', 'N/A')
-                    if created_date != 'N/A' and len(created_date) >= 10:
-                        try:
-                            from datetime import datetime
-                            date_obj = datetime.strptime(
-                                created_date[:10],
-                                '%Y-%m-%d'
-                            )
-                            br_date = date_obj.strftime('%d/%m/%Y')
-                        except Exception:
-                            br_date = created_date[:10]
-                    else:
-                        br_date = 'N/A'
+                    col_main, col_actions = st.columns([3, 1])
 
-                    theme_display = text.get('theme', 'Sem título')[:100]
-                    theme_display += '...' if (
-                        len(text.get('theme', '')) > 100
-                    ) else ''
-
-                    with st.container():
-                        # Header do post
-                        col_header, col_status = st.columns([3, 1])
-
-                        with col_header:
-                            st.subheader(f"{status_emoji} {theme_display}")
-
-                        with col_status:
-                            if is_approved:
-                                st.success(status_text)
-                            else:
-                                st.warning(status_text)
-
-                        # Informações do post em colunas
-                        col_info, col_content = st.columns([1, 2])
+                    with col_main:
+                        # Título e informações básicas em uma linha
+                        col_info, col_meta = st.columns([2, 1])
 
                         with col_info:
-                            st.markdown(f"**📅 Data:** {br_date}")
-                            st.markdown(f"""**📱 Plataforma:** {
-                                PLATFORMS.get(
-                                    text.get('platform', 'N/A'), 'N/A'
-                                )
-                            }""")
+                            st.markdown(
+                                f"""**{
+                                    status_emoji
+                                } {
+                                    theme_display[:60]
+                                }{'...' if len(
+                                    theme_display
+                                ) > 60 else ''}**"""
+                            )
 
-                        with col_content:
-                            st.markdown("**📄 Conteúdo:**")
-                            st.text_area(
-                                "Preview",
-                                value=content_text[:500] + (
-                                    '...' if len(content_text) > 500 else ''
+                        with col_meta:
+                            platform_name = PLATFORMS.get(
+                                text.get(
+                                    'platform',
+                                    'N/A'
                                 ),
-                                height=100,
-                                disabled=True,
-                                label_visibility="collapsed",
-                                key=f"preview_{i}"
+                                'Genérico'
+                            )
+                            st.caption(
+                                f"""📅 {
+                                    br_date
+                                } • 📱 {
+                                    platform_name
+                                } • 📝 {
+                                    word_count
+                                } palavras"""
                             )
 
-                        st.divider()
+                    with col_actions:
+                        # Botões compactos lado a lado
+                        text_id = text.get('id')
+                        col_btn1, col_btn2 = st.columns(2)
 
-                    # Botões de ação para cada post (sempre visíveis)
-                    col_btn1, col_btn2, col_btn3 = st.columns(3)
+                        with col_btn1:
+                            if not is_approved and 'update' in permissions:
+                                if st.button(
+                                    "✅",
+                                    key=f"approve_{text_id}_{i}",
+                                    help="Aprovar & Gerar Embedding",
+                                    use_container_width=True
+                                ):
+                                    with st.spinner("Aprovando e gerando embedding..."):
+                                        text_content = text.get('content', '')
+                                        text_theme = text.get('theme', '')
+                                        result = TextsRequest().approve_and_generate_embedding(
+                                            token,
+                                            text_id,
+                                            text_content,
+                                            text_theme
+                                        )
+                                    st.toast(result, icon="✅")
+                                    st.rerun()
+                            elif is_approved and 'update' in permissions:
+                                if st.button(
+                                    "❌",
+                                    key=f"reject_{text_id}_{i}",
+                                    help="Reprovar",
+                                    use_container_width=True
+                                ):
+                                    with st.spinner("Reprovando..."):
+                                        result = TextsRequest().reject_text(
+                                            token,
+                                            text_id
+                                        )
+                                    st.toast(result, icon="❌")
+                                    st.rerun()
 
-                    text_id = text.get('id')
+                        with col_btn2:
+                            if 'create' in permissions:
+                                if st.button(
+                                    "🔄",
+                                    key=f"regenerate_{text_id}_{i}",
+                                    help="Regenerar",
+                                    use_container_width=True
+                                ):
+                                    st.session_state.regenerate_text_data = {
+                                        'theme': text.get('theme', ''),
+                                        'original_id': text_id
+                                    }
+                                    st.toast(
+                                        "Carregado para regeneração",
+                                        icon="🔄"
+                                    )
 
-                    with col_btn1:
-                        # Botão aprovar - ativo se não aprovado e tem permissão
-                        approve_key = f"approve_{text_id}_{i}"
-                        approve_disabled = is_approved or 'update' not in (
-                            permissions
+                    # Expandir para ver conteúdo completo
+                    with st.expander(
+                        "📄 Ver conteúdo completo",
+                        expanded=False
+                    ):
+                        st.text_area(
+                            "",
+                            value=content_text,
+                            height=120,
+                            disabled=True,
+                            label_visibility="collapsed",
+                            key=f"full_{i}"
                         )
-                        approve_type = "secondary" if not (
-                            approve_disabled
-                        ) else "primary"
 
-                        if st.button(
-                            "✅ Aprovar" if not is_approved else "✅ Aprovado",
-                            key=approve_key,
-                            use_container_width=True,
-                            type=approve_type,
-                            disabled=approve_disabled,
-                                help="Aprovar post" if not (
-                                    approve_disabled
-                                ) else "Post já aprovado"):
-                            with st.spinner("Aprovando post..."):
-                                result = TextsRequest().approve_text(
-                                    token,
-                                    text_id
-                                )
-                            st.toast(result, icon="✅")
-                            st.rerun()
+                    st.divider()
 
-                    with col_btn2:
-                        # Botão reprovar - ativo se aprovado e tem permissão
-                        reject_key = f"reject_{text_id}_{i}"
-                        reject_disabled = not is_approved or 'update' not in (
-                            permissions
-                        )
-                        reject_type = "secondary" if not reject_disabled else (
-                            "primary"
-                        )
+            # Estatísticas da listagem
+            if filtered_texts:
+                total_approved = len(
+                    [t for t in filtered_texts if t.get('is_approved', False)]
+                )
+                total_pending = len(filtered_texts) - total_approved
 
-                        if st.button(
-                            "❌ Reprovar" if is_approved else "❌ Reprovado",
-                            key=reject_key,
-                            use_container_width=True,
-                            type=reject_type,
-                            disabled=reject_disabled,
-                                help="Reprovar post" if not (
-                                    reject_disabled
-                                ) else "Post já reprovado"):
-                            with st.spinner("Reprovando post..."):
-                                result = TextsRequest().reject_text(
-                                    token,
-                                    text_id
-                                )
-                            st.toast(result, icon="❌")
-                            st.rerun()
-
-                    with col_btn3:
-                        # Botão regenerar - sempre ativo se tem permissão
-                        regenerate_key = f"regenerate_{text_id}_{i}"
-                        regenerate_disabled = 'create' not in permissions
-
-                        if st.button(
-                            "🔄 Regenerar",
-                            key=regenerate_key,
-                            use_container_width=True,
-                            type="secondary",
-                            disabled=regenerate_disabled,
-                            help="Regenerar este post" if not (
-                                regenerate_disabled
-                            ) else "Sem permissão para regenerar"
-                        ):
-                            # Armazenar dados do post para regeneração
-                            st.session_state.regenerate_text_data = {
-                                'theme': text.get('theme', ''),
-                                'original_id': text_id
-                            }
-                            st.toast(
-                                "Dados salvos!",
-                                icon="📝"
-                            )
-
-            # Paginação simples
-            if len(filtered_texts) > 10:
-                st.toast(
-                    f"""Exibindo {
-                        min(10, len(filtered_texts))
-                    } de {len(filtered_texts)} posts""",
-                    icon="📄")
+                col_stats1, col_stats2, col_stats3, col_stats4 = st.columns(4)
+                with col_stats1:
+                    st.metric("Total Filtrados", len(filtered_texts))
+                with col_stats2:
+                    st.metric("Aprovados", total_approved)
+                with col_stats3:
+                    st.metric("Pendentes", total_pending)
+                with col_stats4:
+                    approval_rate = (
+                        total_approved / len(
+                            filtered_texts
+                        ) * 100
+                    ) if filtered_texts else 0
+                    st.metric("Taxa Aprovação", f"{approval_rate:.0f}%")
 
         elif 'read' not in permissions:
             st.warning("""
