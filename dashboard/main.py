@@ -73,9 +73,35 @@ class Dashboard:
             """)
             return
 
-        st.header("📊 Dashboard")
-
-        st.divider()
+        # Cabeçalho do dashboard com estilo aprimorado
+        st.markdown("""
+        <div style="
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        ">
+            <h1 style="
+                color: white;
+                margin: 0;
+                font-size: 2.5rem;
+                font-weight: 700;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            ">
+                📊 Dashboard Analytics
+            </h1>
+            <p style="
+                color: rgba(255,255,255,0.9);
+                margin: 0.5rem 0 0 0;
+                font-size: 1.1rem;
+                font-weight: 300;
+            ">
+                Análise completa dos textos gerados por IA
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
         texts = TextsRequest().get_texts(token)
 
@@ -107,7 +133,24 @@ class Dashboard:
         )
 
         # Métricas principais com visual aprimorado
-        st.markdown("### 📈 Métricas Gerais")
+        st.markdown("""
+        <div style="
+            background-color: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border-left: 4px solid #667eea;
+        ">
+            <h3 style="
+                color: #333;
+                margin: 0 0 1rem 0;
+                font-size: 1.4rem;
+                font-weight: 600;
+            ">
+                📈 Métricas Principais
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
 
         col1, col2, col3, col4 = st.columns(4)
 
@@ -116,6 +159,26 @@ class Dashboard:
             [t for t in texts if not t.get('is_approved', False)])
         approved_texts = len([t for t in texts if t.get('is_approved', False)])
         platforms_count = len(df['platform'].unique())
+
+        # Cartões de métricas estilizados
+        metrics_style = """
+        <style>
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            margin: 0.5rem 0;
+            border-top: 3px solid;
+        }
+        .metric-card.total { border-top-color: #667eea; }
+        .metric-card.pending { border-top-color: #ffc107; }
+        .metric-card.approved { border-top-color: #28a745; }
+        .metric-card.platforms { border-top-color: #17a2b8; }
+        </style>
+        """
+        st.markdown(metrics_style, unsafe_allow_html=True)
 
         with col1:
             st.metric(
@@ -255,8 +318,25 @@ class Dashboard:
 
             st.plotly_chart(fig_platform, use_container_width=True)
 
-        # Gráfico de linha temporal
-        st.markdown("### 📅 Evolução Temporal")
+        # Gráfico de linha temporal com estilo
+        st.markdown("""
+        <div style="
+            background-color: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 2rem 0 1rem 0;
+            border-left: 4px solid #667eea;
+        ">
+            <h3 style="
+                color: #333;
+                margin: 0;
+                font-size: 1.4rem;
+                font-weight: 600;
+            ">
+                📅 Evolução Temporal dos Textos
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
 
         # Agrupar por mês
         monthly_data = df.groupby(

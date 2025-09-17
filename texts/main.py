@@ -141,17 +141,54 @@ class Texts:
         """
         Processa a geração completa de post seguindo o fluxo do roadmap.
         """
-        # Criar interface de progresso na área de resultado
+        # Interface de progresso simplificada
         with result_container.container():
-            st.subheader("🚀 Gerando Post com IA")
-            st.caption("Processando sua solicitação...")
+            # Cabeçalho do processo
+            st.markdown("""
+            <div style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 1.5rem;
+                border-radius: 8px;
+                text-align: center;
+                margin-bottom: 1rem;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            ">
+                <h3 style="
+                    color: white;
+                    margin: 0 0 0.5rem 0;
+                    font-size: 1.3rem;
+                    font-weight: 600;
+                ">
+                    🚀 Gerando Post com IA
+                </h3>
+                <p style="
+                    color: rgba(255,255,255,0.9);
+                    margin: 0;
+                    font-size: 1rem;
+                ">
+                    Processando sua solicitação...
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
 
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+            # Container para progresso
+            progress_container = st.container()
+            with progress_container:
+                progress_bar = st.progress(0)
+                status_text = st.empty()
 
         try:
             # 1. Verificar cache Redis
-            status_text.text("🔍 Verificando cache Redis...")
+            status_text.markdown("""
+            <div style="
+                background: #e3f2fd;
+                padding: 0.75rem;
+                border-radius: 6px;
+                border-left: 4px solid #2196f3;
+            ">
+                🔍 <strong>Verificando cache Redis...</strong>
+            </div>
+            """, unsafe_allow_html=True)
             progress_bar.progress(10)
 
             cached_embeddings = self.redis_service.get_cached_embeddings(
@@ -160,7 +197,16 @@ class Texts:
 
             if cached_embeddings:
                 similar_texts = cached_embeddings.get('similar_texts', [])
-                status_text.text("✅ Embeddings encontrados no cache")
+                status_text.markdown("""
+                <div style="
+                    background: #d4edda;
+                    padding: 0.75rem;
+                    border-radius: 6px;
+                    border-left: 4px solid #28a745;
+                ">
+                    ✅ <strong>Embeddings encontrados no cache!</strong>
+                </div>
+                """, unsafe_allow_html=True)
             else:
                 # 2. Busca via API de embeddings (por palavras individuais)
                 status_text.text(
@@ -359,8 +405,26 @@ class Texts:
                     st.markdown("**📄 Post Gerado:**")
                     st.markdown(generated_text)
 
-                # Botões de ação (mesmo padrão da lista)
-                st.markdown("**🎛️ Ações:**")
+                # Seção de ações com estilo melhorado
+                st.markdown("""
+                <div style="
+                    background-color: #f8f9fa;
+                    padding: 1rem;
+                    border-radius: 10px;
+                    margin: 1.5rem 0;
+                    border-left: 4px solid #667eea;
+                ">
+                    <h4 style="
+                        color: #333;
+                        margin: 0 0 1rem 0;
+                        font-size: 1.1rem;
+                        font-weight: 600;
+                    ">
+                        🎛️ Ações Disponíveis
+                    </h4>
+                </div>
+                """, unsafe_allow_html=True)
+
                 col_approve, col_reject, col_regenerate = st.columns(3)
 
                 # Botão Aprovar - Gerar embedding quando aprovado
@@ -803,7 +867,28 @@ class Texts:
             col_params, col_result = st.columns([1.0, 1.2])
 
             with col_params:
-                st.subheader("🎨 Parâmetros de Geração")
+                # Cabeçalho da seção de parâmetros
+                st.markdown("""
+                <div style="
+                    background: linear-gradient(135deg, #667eea 0%, \
+#764ba2 100%);
+                    padding: 1.5rem;
+                    border-radius: 12px;
+                    margin-bottom: 1.5rem;
+                    text-align: center;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                ">
+                    <h3 style="
+                        color: white;
+                        margin: 0;
+                        font-size: 1.5rem;
+                        font-weight: 600;
+                        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+                    ">
+                        🎨 Parâmetros de Geração
+                    </h3>
+                </div>
+                """, unsafe_allow_html=True)
 
                 # Verificar se há dados de regeneração salvos
                 regenerate_data = st.session_state.get(
@@ -819,23 +904,34 @@ class Texts:
                         "automaticamente do post selecionado."
                     )
 
+                # Tooltip personalizado para o campo tema
+                st.markdown("""
+                <div class="tooltip" style="width: 100%; \
+margin-bottom: 0.5rem;">
+                    <span style="font-weight: 500; color: #333;">\
+🎯 Tema do post</span>
+                    <span class="tooltiptext">
+                        📝 Dicas para um bom tema:<br>
+                        • Seja específico e claro<br>
+                        • Use palavras-chave relevantes<br>
+                        • Entre 10-100 palavras<br>
+                        • Evite termos muito técnicos
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
+
                 text_topic = st.text_area(
-                    label="🎯 Tema do post",
+                    label="",
                     value=default_theme,
                     max_chars=500,
-                    placeholder="Ex: Benefícios da energia renovável" +
-                    " para o meio ambiente",
-                    help="Descreva detalhadamente o tema que deseja abordar.",
+                    placeholder="Ex: Benefícios da energia renovável para o \
+meio ambiente e economia",
+                    help="Descreva detalhadamente o tema que deseja abordar. \
+Seja específico para melhores resultados.",
                     height=120,
-                    key="topic_input")
-
-                search_query = st.text_input(
-                    label="🔍 Consulta de busca (opcional)",
-                    placeholder="Ex: energia solar, sustentabilidade," +
-                    " meio ambiente",
-                    help="Termos específicos para busca no banco de dados." +
-                    " Se não fornecido, usará o tema como consulta",
-                    key="search_input")
+                    key="topic_input",
+                    label_visibility="collapsed"
+                )
 
                 # Organizar campos lado a lado
                 col_plat, col_tone = st.columns(2)
@@ -846,10 +942,6 @@ class Texts:
                     platform_display = {
                         k: f"{v}" for k,
                         v in PLATFORMS.items()}
-                    platform_display["GENERIC"] = (
-                        "Genérico (sem plataforma específica)"
-                    )
-                    platform_options.insert(0, "GENERIC")
 
                     selected_platform = st.selectbox(
                         "📱 Plataforma de destino",
@@ -926,26 +1018,77 @@ class Texts:
                         help="Adicionar chamada para ação no final do post"
                     )
 
-                # Botão de gerar sempre visível
+                # Botão de geração
                 generate_button = st.button(
-                    "🚀 Gerar Post",
+                    "🚀 Gerar Post com IA",
                     use_container_width=True,
                     type="primary",
                     key="generate_btn",
-                    help="Clique para gerar o post com os parâmetros")
+                    help="Clique para gerar o post com os parâmetros \
+configurados"
+                )
 
-            # Área de resultado
+            # Área de resultado com estilo
             with col_result:
-                st.subheader("📄 Resultado")
+                # Cabeçalho da seção de resultado
+                st.markdown("""
+                <div style="
+                    background: linear-gradient(135deg, #28a745 0%, \
+#20c997 100%);
+                    padding: 1.5rem;
+                    border-radius: 12px;
+                    margin-bottom: 1.5rem;
+                    text-align: center;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                ">
+                    <h3 style="
+                        color: white;
+                        margin: 0;
+                        font-size: 1.5rem;
+                        font-weight: 600;
+                        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+                    ">
+                        📄 Resultado da Geração
+                    </h3>
+                </div>
+                """, unsafe_allow_html=True)
+
                 result_container = st.container()
 
-                # Estado inicial
+                # Estado inicial com estilo
                 if not generate_button and 'last_generated' not in (
                     st.session_state
                 ):
                     with result_container:
-                        with st.container():
-                            st.info("O post gerado aparecerá aqui")
+                        st.markdown("""
+                        <div style="
+                            background-color: #e3f2fd;
+                            padding: 2rem;
+                            border-radius: 10px;
+                            text-align: center;
+                            margin: 1rem 0;
+                            border: 2px dashed #90caf9;
+                        ">
+                            <h4 style="
+                                color: #1976d2;
+                                margin-bottom: 1rem;
+                                font-weight: 500;
+                            ">
+                                🤖 Aguardando Geração
+                            </h4>
+                            <p style="
+                                color: #666;
+                                margin: 0;
+                                font-size: 1rem;
+                                line-height: 1.5;
+                            ">
+                                Configure os parâmetros ao lado e clique em \
+<strong>"🚀 Gerar Post"</strong><br>
+                                para criar seu conteúdo com inteligência \
+artificial.
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
 
                 # Exibir último resultado se existe
                 elif 'last_generated' in st.session_state:
@@ -970,40 +1113,49 @@ class Texts:
 
             # Processar geração se botão foi clicado
             if generate_button:
-                # Validação com toast apenas quando necessário
+                # Marcar como gerando
+                st.session_state.generating = True
+
+                # Validação com feedback visual melhorado
                 if not text_topic or not text_topic.strip():
-                    st.toast(
-                        "Por favor, preencha o tema do post!",
-                        icon="⚠️")
+                    st.session_state.generating = False
+                    st.error("⚠️ **Campo obrigatório**: Por favor, preencha o \
+tema do post!")
                 elif len(text_topic.strip()) < 5:
-                    st.toast(
-                        "O tema deve ter pelo menos 5 caracteres!",
-                        icon="⚠️")
+                    st.session_state.generating = False
+                    st.warning(
+                        "⚠️ **Tema muito curto**: " +
+                        "O tema deve ter pelo menos 5 caracteres!"
+                    )
                 elif len(text_topic.strip()) > 500:
-                    st.toast(
-                        "O tema deve ter no máximo 500 caracteres!",
-                        icon="❌")
+                    st.session_state.generating = False
+                    st.error(
+                        "❌ **Tema muito longo**: O tema deve ter no máximo "
+                        "500 caracteres!"
+                    )
                 else:
                     # Validação passou - processar geração
-                    query = search_query if search_query else (
-                        text_topic.strip()
-                    )
+                    query = text_topic.strip()
                     platform_code = selected_platform if (
                         selected_platform != "GENERIC"
                     ) else ""
 
-                    self._process_text_generation_improved(
-                        text_topic.strip(),
-                        query,
-                        platform_code,
-                        selected_tone,
-                        selected_creativity,
-                        selected_length,
-                        include_hashtags,
-                        include_cta,
-                        token,
-                        result_container
-                    )
+                    try:
+                        self._process_text_generation_improved(
+                            text_topic.strip(),
+                            query,
+                            platform_code,
+                            selected_tone,
+                            selected_creativity,
+                            selected_length,
+                            include_hashtags,
+                            include_cta,
+                            token,
+                            result_container
+                        )
+                    finally:
+                        # Sempre limpar o estado de geração
+                        st.session_state.generating = False
 
         elif 'create' not in permissions:
             st.warning("""
@@ -1087,10 +1239,15 @@ class Texts:
                 )
                 return
 
-            # Lista de posts compacta
+            # Lista de posts com cards estilizados
             for i, text in enumerate(filtered_texts):
                 is_approved = text.get('is_approved', False)
                 status_emoji = '✅' if is_approved else '⏳'
+
+                # Status badge estilizado
+                status_class = 'status-approved' if is_approved else \
+                    'status-pending'
+                status_text_display = 'Aprovado' if is_approved else 'Pendente'
 
                 # Formatação da data
                 created_date = text.get('created_at', 'N/A')
@@ -1114,114 +1271,156 @@ class Texts:
                 )
                 word_count = len(content_text.split()) if content_text else 0
 
-                # Card compacto
-                with st.container():
-                    col_main, col_actions = st.columns([3, 1])
+                # Card estilizado com hover effect
+                st.markdown(f"""
+                <div class="hover-card" style="
+                    background: white;
+                    padding: 1.5rem;
+                    border-radius: 12px;
+                    margin: 1rem 0;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    border-left: 4px solid \
+{'#28a745' if is_approved else '#ffc107'};
+                    transition: all 0.3s ease;
+                ">
+                    <div style="display: flex; justify-content: \
+space-between; align-items: flex-start;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; \
+margin-bottom: 0.5rem;">
+                                <span class="status-badge {status_class}">\
+{status_text_display}</span>
+                                <span style="margin-left: 1rem; \
+font-size: 0.9rem; color: #666;">
+                                    📅 {br_date} • 📱 \
+{PLATFORMS.get(text.get('platform', 'N/A'), 'Genérico')} \
+• 📝 {word_count} palavras
+                                </span>
+                            </div>
+                            <h4 style="
+                                color: #333;
+                                margin: 0.5rem 0;
+                                font-size: 1.1rem;
+                                font-weight: 600;
+                                line-height: 1.4;
+                            ">
+                                {status_emoji} {theme_display[:80]}\
+{'...' if len(theme_display) > 80 else ''}
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
-                    with col_main:
-                        # Título e informações básicas em uma linha
-                        col_info, col_meta = st.columns([2, 1])
+                # Seção de ações com layout melhorado
+                text_id = text.get('id')
+                col_btn1, col_btn2, col_btn3 = st.columns(3)
 
-                        with col_info:
-                            st.markdown(
-                                f"""**{
-                                    status_emoji
-                                } {
-                                    theme_display[:60]
-                                }{'...' if len(
-                                    theme_display
-                                ) > 60 else ''}**"""
-                            )
-
-                        with col_meta:
-                            platform_name = PLATFORMS.get(
-                                text.get(
-                                    'platform',
-                                    'N/A'
-                                ),
-                                'Genérico'
-                            )
-                            st.caption(
-                                f"""📅 {
-                                    br_date
-                                } • 📱 {
-                                    platform_name
-                                } • 📝 {
-                                    word_count
-                                } palavras"""
-                            )
-
-                    with col_actions:
-                        # Botões compactos lado a lado
-                        text_id = text.get('id')
-                        col_btn1, col_btn2 = st.columns(2)
-
-                        with col_btn1:
-                            if not is_approved and 'update' in permissions:
-                                if st.button(
-                                    "✅",
-                                    key=f"approve_{text_id}_{i}",
-                                    help="Aprovar & Gerar Embedding",
-                                    use_container_width=True
-                                ):
-                                    with st.spinner(
-                                        "Aprovando e gerando embedding..."
-                                    ):
-                                        text_content = text.get('content', '')
-                                        text_theme = text.get('theme', '')
-                                        result = TextsRequest().approve_and_generate_embedding(  # noqa: E501
-                                            token,
-                                            text_id,
-                                            text_content,
-                                            text_theme
-                                        )
-                                    st.toast(result, icon="✅")
-                                    st.rerun()
-                            elif is_approved and 'update' in permissions:
-                                if st.button(
-                                    "❌",
-                                    key=f"reject_{text_id}_{i}",
-                                    help="Reprovar",
-                                    use_container_width=True
-                                ):
-                                    with st.spinner("Reprovando..."):
-                                        result = TextsRequest().reject_text(
-                                            token,
-                                            text_id
-                                        )
-                                    st.toast(result, icon="❌")
-                                    st.rerun()
-
-                        with col_btn2:
-                            if 'create' in permissions:
-                                if st.button(
-                                    "🔄",
-                                    key=f"regenerate_{text_id}_{i}",
-                                    help="Regenerar",
-                                    use_container_width=True
-                                ):
-                                    st.session_state.regenerate_text_data = {
-                                        'theme': text.get('theme', ''),
-                                        'original_id': text_id
-                                    }
-                                    st.toast(
-                                        "Carregado para regeneração",
-                                        icon="🔄"
+                with col_btn1:
+                    if not is_approved and 'update' in permissions:
+                        if st.button(
+                            "✅ Aprovar",
+                            key=f"approve_{text_id}_{i}",
+                            help="Aprovar & Gerar Embedding",
+                            use_container_width=True,
+                            type="primary"
+                        ):
+                            with st.spinner(
+                                "Aprovando e gerando embedding..."
+                            ):
+                                text_content = text.get('content', '')
+                                text_theme = text.get('theme', '')
+                                result = \
+                                    TextsRequest().\
+                                    approve_and_generate_embedding(
+                                        token,
+                                        text_id,
+                                        text_content,
+                                        text_theme
                                     )
+                            st.toast(result, icon="✅")
+                            st.rerun()
+                    elif is_approved and 'update' in permissions:
+                        if st.button(
+                            "❌ Reprovar",
+                            key=f"reject_{text_id}_{i}",
+                            help="Reprovar",
+                            use_container_width=True,
+                            type="secondary"
+                        ):
+                            with st.spinner("Reprovando..."):
+                                result = TextsRequest().reject_text(
+                                    token,
+                                    text_id
+                                )
+                            st.toast(result, icon="❌")
+                            st.rerun()
 
-                    # Expandir para ver conteúdo completo
-                    with st.expander(
-                        "📄 Ver conteúdo completo",
-                        expanded=False
+                with col_btn2:
+                    if 'create' in permissions:
+                        if st.button(
+                            "🔄 Regenerar",
+                            key=f"regenerate_{text_id}_{i}",
+                            help="Regenerar",
+                            use_container_width=True,
+                            type="secondary"
+                        ):
+                            st.session_state.regenerate_text_data = {
+                                'theme': text.get('theme', ''),
+                                'original_id': text_id
+                            }
+                            st.toast(
+                                "Carregado para regeneração",
+                                icon="🔄"
+                            )
+
+                with col_btn3:
+                    # Botão para visualizar conteúdo
+                    if st.button(
+                        "👁️ Visualizar",
+                        key=f"view_{text_id}_{i}",
+                        help="Ver conteúdo completo",
+                        use_container_width=True,
+                        type="secondary"
                     ):
-                        st.text_area(
-                            "",
-                            value=content_text,
-                            height=120,
-                            disabled=True,
-                            label_visibility="collapsed",
-                            key=f"full_{i}"
-                        )
+                        # Toggle do estado de visualização
+                        view_key = f"view_expanded_{text_id}"
+                        if view_key not in st.session_state:
+                            st.session_state[view_key] = False
+                        st.session_state[
+                            view_key
+                        ] = not st.session_state[view_key]
+
+                # Conteúdo expandido condicionalmente com animação
+                view_key = f"view_expanded_{text_id}"
+                if st.session_state.get(view_key, False):
+                    st.markdown("""
+                    <div style="
+                        background: #f8f9fa;
+                        padding: 1.5rem;
+                        border-radius: 10px;
+                        margin: 1rem 0;
+                        border: 1px solid #e9ecef;
+                        animation: fadeIn 0.5s ease-out;
+                    ">
+                        <h5 style="
+                            color: #333;
+                            margin: 0 0 1rem 0;
+                            font-weight: 600;
+                        ">
+                            📄 Conteúdo Completo do Post
+                        </h5>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    st.text_area(
+                        "",
+                        value=content_text,
+                        height=150,
+                        disabled=True,
+                        label_visibility="collapsed",
+                        key=f"full_{i}"
+                    )
 
                     st.divider()
 
