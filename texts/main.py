@@ -140,36 +140,18 @@ class Texts:
             result_container):
         """
         Processa a geração completa de post seguindo o fluxo do roadmap.
+
+        Parameters não utilizados mantidos para compatibilidade futura:
+        - include_hashtags: bool
+        - include_cta: bool
         """
+        # Parâmetros mantidos para futura implementação
+        _ = include_hashtags, include_cta
         # Interface de progresso simplificada
         with result_container.container():
             # Cabeçalho do processo
-            st.markdown("""
-            <div style="
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                padding: 1.5rem;
-                border-radius: 8px;
-                text-align: center;
-                margin-bottom: 1rem;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            ">
-                <h3 style="
-                    color: white;
-                    margin: 0 0 0.5rem 0;
-                    font-size: 1.3rem;
-                    font-weight: 600;
-                ">
-                    🚀 Gerando Post com IA
-                </h3>
-                <p style="
-                    color: rgba(255,255,255,0.9);
-                    margin: 0;
-                    font-size: 1rem;
-                ">
-                    Processando sua solicitação...
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.header("🚀 Gerando Post")
+            st.info("Processando...")
 
             # Container para progresso
             progress_container = st.container()
@@ -179,16 +161,7 @@ class Texts:
 
         try:
             # 1. Verificar cache Redis
-            status_text.markdown("""
-            <div style="
-                background: #e3f2fd;
-                padding: 0.75rem;
-                border-radius: 6px;
-                border-left: 4px solid #2196f3;
-            ">
-                🔍 <strong>Verificando cache Redis...</strong>
-            </div>
-            """, unsafe_allow_html=True)
+            status_text.info("🔍 Verificando cache...")
             progress_bar.progress(10)
 
             cached_embeddings = self.redis_service.get_cached_embeddings(
@@ -197,21 +170,10 @@ class Texts:
 
             if cached_embeddings:
                 similar_texts = cached_embeddings.get('similar_texts', [])
-                status_text.markdown("""
-                <div style="
-                    background: #d4edda;
-                    padding: 0.75rem;
-                    border-radius: 6px;
-                    border-left: 4px solid #28a745;
-                ">
-                    ✅ <strong>Embeddings encontrados no cache!</strong>
-                </div>
-                """, unsafe_allow_html=True)
+                status_text.success("✅ Cache encontrado")
             else:
                 # 2. Busca via API de embeddings (por palavras individuais)
-                status_text.text(
-                    "🔍 Buscando embeddings por palavras individuais..."
-                )
+                status_text.text("🔍 Buscando referências...")
                 progress_bar.progress(30)
 
                 # Consultar por palavras individuais
@@ -221,7 +183,7 @@ class Texts:
 
                 # Agregar todos os resultados para manter compatibilidade
                 raw_texts = []
-                for word, word_embeddings in embeddings_by_word.items():
+                for _, word_embeddings in embeddings_by_word.items():
                     raw_texts.extend(word_embeddings)
 
                 # Remover duplicatas baseado no ID
@@ -235,20 +197,17 @@ class Texts:
 
                 raw_texts = unique_texts
 
-                # Armazenar dados detalhados para mostrar depois
-                st.session_state['detailed_embeddings'] = embeddings_by_word
-
                 # Permite geração mesmo sem resultados da API
                 if raw_texts:
                     # 3. Tratamento dos textos da API
-                    status_text.text("⚙️ Tratando textos encontrados...")
+                    status_text.text("⚙️ Processando textos...")
                     progress_bar.progress(50)
 
                     texts = self.text_service.treat_text_content(raw_texts)
 
                     if texts:
                         # 4. Busca de textos similares via API
-                        status_text.text("🎯 Encontrando textos similares...")
+                        status_text.text("🎯 Analisando similaridade...")
                         progress_bar.progress(70)
 
                         similar_texts = (
@@ -263,52 +222,28 @@ class Texts:
                             self.redis_service.cache_embeddings(
                                 search_query, {'similar_texts': similar_texts})
 
-                            # Mostrar preview dos embeddings encontrados
-                            status_text.markdown(f"""
-                            ✅ **{len(similar_texts)} embeddings encontrados!**
-
-                            **Top 3 referências mais relevantes:**
-                            """)
-
-                            for i, (
-                                text,
-                                score
-                            ) in enumerate(similar_texts[:3], 1):
-                                title = text.get('title', 'Sem título')
-                                text_type = text.get('type', 'Conteúdo')
-                                score_percentage = round(score * 100, 1)
-
-                                status_text.markdown(f"""
-                                **{i}.** {title} *(Relevância: {
-                                    score_percentage
-                                }%)*
-                                📂 {text_type}
-                                """)
-
-                            # Pequena pausa para permitir visualização
-                            import time
-                            time.sleep(2)
+                            # Simples confirmação de referências encontradas
+                            count = len(similar_texts)
+                            msg = f"✅ {count} referências encontradas"
+                            status_text.success(msg)
                         else:
                             st.toast(
-                                "Nenhuma referência similar encontrada",
+                                "Nenhuma referência encontrada",
                                 icon="ℹ️"
                             )
                             similar_texts = []
                     else:
                         st.toast(
-                            """Textos inválidos após tratamento,
-                            prosseguindo sem referências""",
-                            icon="⚠️")
+                            "Textos inválidos, prosseguindo sem referências",
+                            icon="⚠️"
+                        )
                         similar_texts = []
                 else:
-                    st.toast(
-                        """Nenhuma referência encontrada na API,
-                        gerando baseado apenas no tema""",
-                        icon="ℹ️")
+                    st.toast("Nenhuma referência encontrada", icon="ℹ️")
                     similar_texts = []
 
             # 6. Elaboração do contexto de prompt com novos parâmetros
-            status_text.text("📝 Criando contexto do prompt...")
+            status_text.text("📝 Preparando prompt...")
             progress_bar.progress(80)
 
             prompt_context = self.text_service.create_prompt_context(
@@ -321,7 +256,7 @@ class Texts:
             )
 
             # 7. Geração de post via OpenAI/LLM
-            status_text.text("🤖 Gerando post com IA...")
+            status_text.text("🤖 Gerando post...")
             progress_bar.progress(90)
 
             generated_text = self.text_service.generate_text_via_llm(
@@ -332,7 +267,7 @@ class Texts:
                 return
 
             # 8. Salvar no banco de dados da API UniPost (SEM EMBEDDING)
-            status_text.text("💾 Salvando post no banco de dados...")
+            status_text.text("💾 Salvando post...")
             progress_bar.progress(95)
 
             text_data = {
@@ -366,9 +301,7 @@ class Texts:
                 created_text_id = None
 
             progress_bar.progress(100)
-            status_text.text(
-                "✅ Post salvo! Embedding será gerado após aprovação."
-            )
+            status_text.text("✅ Post salvo")
 
             # Processamento concluído
 
@@ -405,41 +338,24 @@ class Texts:
                     st.markdown("**📄 Post Gerado:**")
                     st.markdown(generated_text)
 
-                # Seção de ações com estilo melhorado
-                st.markdown("""
-                <div style="
-                    background-color: #f8f9fa;
-                    padding: 1rem;
-                    border-radius: 10px;
-                    margin: 1.5rem 0;
-                    border-left: 4px solid #667eea;
-                ">
-                    <h4 style="
-                        color: #333;
-                        margin: 0 0 1rem 0;
-                        font-size: 1.1rem;
-                        font-weight: 600;
-                    ">
-                        🎛️ Ações Disponíveis
-                    </h4>
-                </div>
-                """, unsafe_allow_html=True)
+                # Seção de ações
+                st.subheader("🎛️ Ações Disponíveis")
 
                 col_approve, col_reject, col_regenerate = st.columns(3)
 
                 # Botão Aprovar - Gerar embedding quando aprovado
                 with col_approve:
                     if st.button(
-                        "✅ Aprovar & Gerar Embedding",
+                        "✅ Aprovar Post",
                         key="approve_generated",
                         use_container_width=True,
                         type="primary",
-                        help="Aprovar post e gerar embedding"
+                        help="Aprovar post"
                     ):
                         # Aprovar post e gerar embedding
                         if created_text_id:
                             with st.spinner(
-                                "Aprovando post e gerando embedding..."
+                                "Aprovando post..."
                             ):
                                 approval_result = TextsRequest().approve_and_generate_embedding(  # noqa: E501
                                     token,
@@ -467,7 +383,7 @@ class Texts:
                         key="reject_generated",
                         use_container_width=True,
                         type="secondary",
-                        help="Marcar como reprovado"
+                        help="Reprovar post"
                     ):
                         # Reprovar post
                         if created_text_id:
@@ -495,7 +411,7 @@ class Texts:
                         key="regenerate_generated",
                         use_container_width=True,
                         type="secondary",
-                        help="Gerar novo post com os mesmos parâmetros"
+                        help="Regenerar post"
                     ):
                         # Preparar dados para regeneração
                         if 'last_generated' in st.session_state:
@@ -509,317 +425,19 @@ class Texts:
                             }
                             del st.session_state['last_generated']
 
-                        st.toast(
-                            "Regenerando post com os mesmos parâmetros...",
-                            icon="🔄"
-                        )
+                        st.toast("Regenerando post...", icon="🔄")
                         st.rerun()
-
-                # Referências detalhadas com embeddings encontrados
-                if similar_texts:
-                    with st.expander(f"""📖 Embeddings Encontrados ({
-                        len(similar_texts)
-                    } referências)""", expanded=True
-                    ):
-                        st.markdown("### 🔍 Referências utilizadas na geração:")
-
-                        for i, (
-                            text,
-                            score
-                        ) in enumerate(similar_texts[:5], 1):
-                            # Informações do embedding com metadados
-                            title = text.get('title', 'Sem título')
-                            text_type = text.get('type', 'Conteúdo Geral')
-                            index_source = text.get('index', 'unknown')
-                            text_content = text.get('text', '')[:300]
-
-                            # Extrair metadados do embedding
-                            metadata = text.get('metadata', {})
-                            platform = metadata.get(
-                                'platform_display',
-                                text.get('platform', '')
-                            )
-                            theme = metadata.get(
-                                'theme',
-                                text.get('theme', '')
-                            )
-                            author = metadata.get(
-                                'author',
-                                text.get('author', '')
-                            )
-                            origin = text.get('origin', '')
-                            created_date = text.get('created_at', '')
-
-                            # Campos específicos dos metadados
-                            tags = metadata.get('tags', '')
-                            word_count = metadata.get('word_count', '')
-                            length = metadata.get('length', '')
-
-                            # Score em porcentagem para melhor visualização
-                            score_percentage = round(score * 100, 1)
-
-                            # Score armazenado para uso futuro
-
-                            with st.container():
-                                st.markdown(f"**📄 {title}**")
-
-                                col_info, col_score = st.columns([3, 1])
-
-                                with col_info:
-                                    # Exibir metadados principais
-                                    metadata_info = []
-                                    if platform:
-                                        metadata_info.append(f"📱 {platform}")
-                                    if theme:
-                                        metadata_info.append(f"🎯 {theme}")
-                                    if origin:
-                                        metadata_info.append(f"🗂️ {origin}")
-
-                                    if metadata_info:
-                                        st.caption(" • ".join(metadata_info))
-                                    else:
-                                        st.caption(
-                                            f"""🏷️ {
-                                                text_type
-                                            } • 🗂️ {index_source}"""
-                                        )
-
-                                with col_score:
-                                    if score >= 0.7:
-                                        st.success(
-                                            f"Alta: {score_percentage}%"
-                                        )
-                                    elif score >= 0.4:
-                                        st.warning(
-                                            f"Média: {score_percentage}%"
-                                        )
-                                    else:
-                                        st.info(f"Baixa: {score_percentage}%")
-
-                                # Seção expandida com mais metadados
-                                with st.expander(
-                                    "📋 Ver detalhes completos",
-                                    expanded=False
-                                ):
-                                    col_meta1, col_meta2 = st.columns(2)
-
-                                    with col_meta1:
-                                        if author:
-                                            st.markdown(
-                                                f"**👤 Autor:** {author}"
-                                            )
-                                        if created_date:
-                                            try:
-                                                from datetime import datetime
-                                                if len(created_date) >= 10:
-                                                    date_obj = (
-                                                        datetime.strptime(
-                                                            created_date[:10],
-                                                            '%Y-%m-%d'
-                                                        )
-                                                    )
-                                                    br_date = (
-                                                        date_obj.strftime(
-                                                            '%d/%m/%Y'
-                                                        )
-                                                    )
-                                                    st.markdown(
-                                                        f"""**📅 Criado em:** {
-                                                            br_date
-                                                        }"""
-                                                    )
-                                            except Exception:
-                                                st.markdown(
-                                                    f"""**📅 Criado em:** {
-                                                        created_date[:10]
-                                                    }"""
-                                                )
-                                        if tags:
-                                            st.markdown(f"**🏷️ Tags:** {tags}")
-
-                                    with col_meta2:
-                                        if word_count:
-                                            st.markdown(
-                                                f"**📊 Palavras:** {word_count}"
-                                            )
-                                        if length:
-                                            st.markdown(
-                                                f"**📏 Tamanho:** {length}"
-                                            )
-                                        st.markdown(
-                                            f"""**🆔 ID:** {
-                                                text.get('id', 'N/A')}"""
-                                        )
-
-                                st.markdown(
-                                    "**Conteúdo utilizado como referência:**"
-                                )
-                                st.text(
-                                    f"""{
-                                        text_content
-                                    }{'...' if len(
-                                        text.get('text', '')
-                                    ) > 300 else ''}"""
-                                )
-                                st.divider()
-
-                        if len(similar_texts) > 5:
-                            st.info(
-                                f"""Mostrando 5 de {
-                                    len(similar_texts)
-                                } referências encontradas.
-                                As referências com maior score de
-                                similaridade foram priorizadas."""
-                            )
-
-                        # Resumo estatístico dos embeddings
-                        st.markdown("---")
-                        st.markdown("### 📊 Resumo das Referências:")
-
-                        (
-                            col_stats1, col_stats2, col_stats3, col_stats4
-                        ) = st.columns(4)
-
-                        with col_stats1:
-                            st.metric(
-                                "Total de Referências", len(similar_texts)
-                            )
-
-                        with col_stats2:
-                            avg_score = sum(
-                                score for _, score in similar_texts
-                            ) / len(similar_texts)
-                            st.metric("Score Médio", f"{avg_score:.2f}")
-
-                        with col_stats3:
-                            high_relevance = sum(
-                                1 for _, score in similar_texts if (
-                                    score >= 0.7
-                                ))
-                            st.metric("Alta Relevância", high_relevance)
-
-                        with col_stats4:
-                            # Contar tipos únicos de referências
-                            unique_types = set(
-                                text.get(
-                                    'type',
-                                    'Geral'
-                                ) for text, _ in similar_texts)
-                            st.metric("Tipos de Fonte", len(unique_types))
-
-                        # Mostrar tipos de fontes encontradas
-                        if len(unique_types) > 1:
-                            st.markdown("**🗂️ Tipos de fontes consultadas:**")
-                            types_text = ", ".join(sorted(unique_types))
-                            st.caption(types_text)
-                else:
-                    # Exibir aviso quando não há referências
-                    with st.expander(
-                        "📖 Embeddings Encontrados (0 referências)",
-                        expanded=True
-                    ):
-                        st.warning("""
-                        🔍 **Nenhuma referência encontrada**
-
-                        Este post foi gerado baseado apenas no tema fornecido,
-                        sem utilizar referências do banco de dados
-                        de embeddings.
-
-                        **Possíveis motivos:**
-                        - Tema muito específico ou novo
-                        - Base de dados ainda não contém conteúdo relacionado
-                        - Termos de busca não encontraram correspondências
-
-                        **Dica:** Tente reformular o tema ou usar termos
-                        mais gerais para encontrar referências relacionadas.
-                        """)
-
-                        # Estatísticas quando não há referências
-                        (
-                            col_empty1, col_empty2, col_empty3, col_empty4
-                        ) = st.columns(4)
-
-                        with col_empty1:
-                            st.metric("Total de Referências", 0)
-                        with col_empty2:
-                            st.metric("Score Médio", "N/A")
-                        with col_empty3:
-                            st.metric("Alta Relevância", 0)
-                        with col_empty4:
-                            st.metric("Tipos de Fonte", 0)
 
                 # Mostrar resultado do registro na API
                 if send_result.get("success"):
-                    st.success("✅ **Texto registrado com sucesso na API!**")
-                    if created_text_id:
-                        st.info(f"🆔 **ID do texto**: {created_text_id}")
+                    import time
+                    st.toast("✅ Texto gerado com sucesso", icon="✅")
+                    time.sleep(2.5)
                 else:
                     st.error(
-                        f"""🚨 **Erro no Registro da API**\n\n{send_result.get(
-                            'message',
-                            'Erro desconhecido'
-                            )
+                        f"""🚨 Erro no registro: {
+                            send_result.get('message', 'Erro desconhecido')
                         }"""
-                    )
-
-                # Nova seção: Referências Detalhadas por Palavra
-                st.divider()
-                st.markdown("## 📚 Referências Detalhadas por Palavra")
-
-                # Verificar se há dados detalhados dos embeddings
-                detailed_embeddings = st.session_state.get(
-                    'detailed_embeddings',
-                    {}
-                )
-
-                if detailed_embeddings:
-                    # Mostrar estatísticas gerais
-                    total_words = len(detailed_embeddings)
-                    total_refs = sum(
-                        len(refs) for refs in detailed_embeddings.values()
-                    )
-
-                    col_stats1, col_stats2, col_stats3 = st.columns(3)
-                    with col_stats1:
-                        st.metric("🔤 Palavras Consultadas", total_words)
-                    with col_stats2:
-                        st.metric("📄 Total Referências", total_refs)
-                    with col_stats3:
-                        avg_refs = total_refs / total_words if (
-                            total_words > 0
-                        ) else 0
-                        st.metric("📊 Média por Palavra", f"{avg_refs:.1f}")
-
-                    st.markdown("---")
-
-                    # Mostrar detalhes por palavra
-                    for word, word_refs in detailed_embeddings.items():
-                        if word_refs:  # Só mostrar palavras com referências
-                            with st.expander(
-                                f"""🔍 **{
-                                    word.title()
-                                }** ({len(word_refs)} referências)""",
-                                expanded=False
-                            ):
-                                for i, ref in enumerate(word_refs[:3], 1):
-                                    title = ref.get('title', 'Sem título')
-                                    content = ref.get('content', '')[:200]
-                                    score = ref.get('similarity_score', 0)
-                                    origin = ref.get('origin', 'unknown')
-
-                                    # Card da referência
-                                    with st.container():
-                                        st.markdown(f"**#{i} {title}**")
-                                        st.text(f"{content}...")
-                                        col_score, col_origin = st.columns(2)
-                                        with col_score:
-                                            st.caption(f"📈 Score: {score:.2f}")
-                                        with col_origin:
-                                            st.caption(f"🔗 Origem: {origin}")
-                else:
-                    st.info(
-                        """📭 Nenhuma referência detalhada """ +
-                        """disponível para esta consulta."""
                     )
 
                 # Salvar na sessão com ID do post criado
@@ -847,6 +465,8 @@ class Texts:
                 pass  # Elementos podem já ter sido removidos
 
     def create(self, token, menu_position, permissions):
+        # menu_position não utilizado nesta função
+        _ = menu_position
         """
         Gera um novo post usando IA.
 
@@ -859,6 +479,10 @@ class Texts:
         permissions : list
             A lista de permissões do usuário.
         """
+        # Limpar dados de post anterior ao acessar a tela
+        if 'last_generated' in st.session_state:
+            del st.session_state['last_generated']
+
         # Exibir status dos serviços no menu
         if 'create' in permissions:
 
@@ -868,27 +492,7 @@ class Texts:
 
             with col_params:
                 # Cabeçalho da seção de parâmetros
-                st.markdown("""
-                <div style="
-                    background: linear-gradient(135deg, #667eea 0%, \
-#764ba2 100%);
-                    padding: 1.5rem;
-                    border-radius: 12px;
-                    margin-bottom: 1.5rem;
-                    text-align: center;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                ">
-                    <h3 style="
-                        color: white;
-                        margin: 0;
-                        font-size: 1.5rem;
-                        font-weight: 600;
-                        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-                    ">
-                        🎨 Parâmetros de Geração
-                    </h3>
-                </div>
-                """, unsafe_allow_html=True)
+                st.header("🎨 Parâmetros de Geração")
 
                 # Verificar se há dados de regeneração salvos
                 regenerate_data = st.session_state.get(
@@ -904,30 +508,16 @@ class Texts:
                         "automaticamente do post selecionado."
                     )
 
-                # Tooltip personalizado para o campo tema
-                st.markdown("""
-                <div class="tooltip" style="width: 100%; \
-margin-bottom: 0.5rem;">
-                    <span style="font-weight: 500; color: #333;">\
-🎯 Tema do post</span>
-                    <span class="tooltiptext">
-                        📝 Dicas para um bom tema:<br>
-                        • Seja específico e claro<br>
-                        • Use palavras-chave relevantes<br>
-                        • Entre 10-100 palavras<br>
-                        • Evite termos muito técnicos
-                    </span>
-                </div>
-                """, unsafe_allow_html=True)
+                # Título para o campo tema
+                st.markdown("**🎯 Tema do post**")
+                st.caption("Seja específico, use palavras-chave relevantes")
 
                 text_topic = st.text_area(
                     label="",
                     value=default_theme,
                     max_chars=500,
-                    placeholder="Ex: Benefícios da energia renovável para o \
-meio ambiente e economia",
-                    help="Descreva detalhadamente o tema que deseja abordar. \
-Seja específico para melhores resultados.",
+                    placeholder="Ex: Benefícios da energia renovável",
+                    help="Tema para o post",
                     height=120,
                     key="topic_input",
                     label_visibility="collapsed"
@@ -949,8 +539,7 @@ Seja específico para melhores resultados.",
                         format_func=(
                             lambda x: platform_display.get(x, x)
                         ),  # type: ignore
-                        help="Selecione a plataforma onde" +
-                        " o conteúdo será publicado",
+                        help="Plataforma de destino",
                         key="platform_input"
                     )  # type: ignore
 
@@ -967,8 +556,7 @@ Seja específico para melhores resultados.",
                         "📝 Tom da linguagem",
                         tone_options,
                         index=0,
-                        help="Defina o tom que melhor se " +
-                        "adequa ao seu público",
+                        help="Tom do conteúdo",
                         key="tone_input")
 
                 # Segunda linha de campos emparelhados
@@ -981,7 +569,7 @@ Seja específico para melhores resultados.",
                         max_value=800,
                         value=300,
                         step=25,
-                        help="Defina exatamente quantas palavras o post terá",
+                        help="Número de palavras",
                         key="word_count_input"
                     )
                     # Converter para formato esperado pelo backend
@@ -997,8 +585,7 @@ Seja específico para melhores resultados.",
                             "inovador"
                         ],
                         index=1,
-                        help="Controle o nível de criatividade e " +
-                        "originalidade do post",
+                        help="Nível de criatividade",
                         key="creativity_input")
 
                 # Terceira linha de configurações adicionais
@@ -1008,14 +595,14 @@ Seja específico para melhores resultados.",
                     include_hashtags = st.checkbox(
                         "#️⃣ Incluir hashtags",
                         value=True,
-                        help="Adicionar hashtags relevantes ao conteúdo"
+                        help="Incluir hashtags"
                     )
 
                 with col_cta:
                     include_cta = st.checkbox(
                         "📢 Incluir call-to-action",
                         value=False,
-                        help="Adicionar chamada para ação no final do post"
+                        help="Incluir CTA"
                     )
 
                 # Botão de geração
@@ -1024,92 +611,24 @@ Seja específico para melhores resultados.",
                     use_container_width=True,
                     type="primary",
                     key="generate_btn",
-                    help="Clique para gerar o post com os parâmetros \
-configurados"
+                    help="Gerar post"
                 )
 
-            # Área de resultado com estilo
+            # Área de resultado
             with col_result:
                 # Cabeçalho da seção de resultado
-                st.markdown("""
-                <div style="
-                    background: linear-gradient(135deg, #28a745 0%, \
-#20c997 100%);
-                    padding: 1.5rem;
-                    border-radius: 12px;
-                    margin-bottom: 1.5rem;
-                    text-align: center;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                ">
-                    <h3 style="
-                        color: white;
-                        margin: 0;
-                        font-size: 1.5rem;
-                        font-weight: 600;
-                        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-                    ">
-                        📄 Resultado da Geração
-                    </h3>
-                </div>
-                """, unsafe_allow_html=True)
+                st.header("📄 Resultado da Geração")
 
                 result_container = st.container()
 
-                # Estado inicial com estilo
-                if not generate_button and 'last_generated' not in (
-                    st.session_state
-                ):
+                # Estado inicial limpo
+                if not generate_button:
                     with result_container:
-                        st.markdown("""
-                        <div style="
-                            background-color: #e3f2fd;
-                            padding: 2rem;
-                            border-radius: 10px;
-                            text-align: center;
-                            margin: 1rem 0;
-                            border: 2px dashed #90caf9;
-                        ">
-                            <h4 style="
-                                color: #1976d2;
-                                margin-bottom: 1rem;
-                                font-weight: 500;
-                            ">
-                                🤖 Aguardando Geração
-                            </h4>
-                            <p style="
-                                color: #666;
-                                margin: 0;
-                                font-size: 1rem;
-                                line-height: 1.5;
-                            ">
-                                Configure os parâmetros ao lado e clique em \
-<strong>"🚀 Gerar Post"</strong><br>
-                                para criar seu conteúdo com inteligência \
-artificial.
-                            </p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.info("""
+                        🤖 **Aguardando Geração**
 
-                # Exibir último resultado se existe
-                elif 'last_generated' in st.session_state:
-                    last_data = st.session_state['last_generated']
-                    with result_container:
-                        st.toast("Post anterior carregado", icon="📄")
-
-                        # Mostrar informações do post anterior
-                        st.info(f"""
-                        📱 {
-                            last_data.get('platform', 'N/A')
-                        } • 📝 {last_data.get('tone', 'N/A').title()} •
-                        🎨 {last_data.get('creativity', 'N/A').title()} • 📏 {
-                            last_data.get('length', 'N/A')
-                        }
+                        Configure os parâmetros e clique em **"🚀 Gerar Post"**.
                         """)
-
-                        # Mostrar texto anterior
-                        with st.container():
-                            st.markdown("**📄 Post Anterior:**")
-                            st.markdown(last_data.get('text', ''))
 
             # Processar geração se botão foi clicado
             if generate_button:
@@ -1119,20 +638,13 @@ artificial.
                 # Validação com feedback visual melhorado
                 if not text_topic or not text_topic.strip():
                     st.session_state.generating = False
-                    st.error("⚠️ **Campo obrigatório**: Por favor, preencha o \
-tema do post!")
+                    st.error("Preencha o tema do post")
                 elif len(text_topic.strip()) < 5:
                     st.session_state.generating = False
-                    st.warning(
-                        "⚠️ **Tema muito curto**: " +
-                        "O tema deve ter pelo menos 5 caracteres!"
-                    )
+                    st.warning("Tema muito curto (mín. 5 caracteres)")
                 elif len(text_topic.strip()) > 500:
                     st.session_state.generating = False
-                    st.error(
-                        "❌ **Tema muito longo**: O tema deve ter no máximo "
-                        "500 caracteres!"
-                    )
+                    st.error("Tema muito longo (máx. 500 caracteres)")
                 else:
                     # Validação passou - processar geração
                     query = text_topic.strip()
@@ -1161,11 +673,12 @@ tema do post!")
             st.warning("""
             **🔒 Acesso Restrito**
 
-            Você não possui permissão para gerar posts.
-            Entre em contato com o administrador do sistema.
+            Sem permissão para gerar posts.
             """)
 
     def render(self, token, menu_position, permissions):
+        # menu_position não utilizado nesta função
+        _ = menu_position
         """
         Interface para renderização dos posts gerados.
 
@@ -1183,14 +696,14 @@ tema do post!")
             texts = TextsRequest().get_texts(token)
 
             if not texts:
-                col4, col5, col6 = st.columns(3)
+                _, col5, _ = st.columns(3)
                 with col5:
                     st.info("""
                     **📄 Nenhum post encontrado**
 
-                    Que tal gerar seu primeiro post usando IA?
+                    Que tal gerar seu primeiro post?
 
-                    Vá para **Gerar post** no menu para começar.
+                    Vá para **Gerar post** no menu.
                     """)
                 return
 
@@ -1233,21 +746,17 @@ tema do post!")
                         'theme', '').lower()]
 
             if not filtered_texts:
-                st.toast(
-                    body="Nenhum post encontrado com os filtros aplicados.",
-                    icon="🔍"
-                )
+                st.toast("Nenhum post encontrado", icon="🔍")
                 return
 
-            # Lista de posts com cards estilizados
+            # Lista de posts com layout de 2 colunas
             for i, text in enumerate(filtered_texts):
                 is_approved = text.get('is_approved', False)
                 status_emoji = '✅' if is_approved else '⏳'
 
-                # Status badge estilizado
-                status_class = 'status-approved' if is_approved else \
-                    'status-pending'
+                # Status e formatação
                 status_text_display = 'Aprovado' if is_approved else 'Pendente'
+                print(status_text_display)
 
                 # Formatação da data
                 created_date = text.get('created_at', 'N/A')
@@ -1271,57 +780,57 @@ tema do post!")
                 )
                 word_count = len(content_text.split()) if content_text else 0
 
-                # Card estilizado com hover effect
-                st.markdown(f"""
-                <div class="hover-card" style="
-                    background: white;
-                    padding: 1.5rem;
-                    border-radius: 12px;
-                    margin: 1rem 0;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                    border-left: 4px solid \
-{'#28a745' if is_approved else '#ffc107'};
-                    transition: all 0.3s ease;
-                ">
-                    <div style="display: flex; justify-content: \
-space-between; align-items: flex-start;">
-                        <div style="flex: 1;">
-                            <div style="display: flex; align-items: center; \
-margin-bottom: 0.5rem;">
-                                <span class="status-badge {status_class}">\
-{status_text_display}</span>
-                                <span style="margin-left: 1rem; \
-font-size: 0.9rem; color: #666;">
-                                    📅 {br_date} • 📱 \
-{PLATFORMS.get(text.get('platform', 'N/A'), 'Genérico')} \
-• 📝 {word_count} palavras
-                                </span>
-                            </div>
-                            <h4 style="
-                                color: #333;
-                                margin: 0.5rem 0;
-                                font-size: 1.1rem;
-                                font-weight: 600;
-                                line-height: 1.4;
-                            ">
-                                {status_emoji} {theme_display[:80]}\
-{'...' if len(theme_display) > 80 else ''}
-                            </h4>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                # Card com informações do post
+                if is_approved:
+                    st.success(f"""
+                    {
+                        status_emoji
+                    } **{theme_display[:80]}{'...' if len(
+                        theme_display
+                    ) > 80 else ''}**
 
-                # Seção de ações com layout melhorado
+                    📅 {
+                        br_date
+                    } • 📱 {
+                        PLATFORMS.get(text.get('platform', 'N/A'), 'Genérico')
+                    } • 📝 {word_count} palavras
+                    """)
+                else:
+                    st.warning(f"""
+                    {
+                        status_emoji
+                    } **{
+                        theme_display[:80]
+                    }{'...' if len(theme_display) > 80 else ''}**
+
+                    📅 {
+                        br_date
+                    } • 📱 {
+                        PLATFORMS.get(text.get('platform', 'N/A'), 'Genérico')
+                    } • 📝 {word_count} palavras
+                    """)
+
+                # Layout de 2 colunas: texto à esquerda, botões à direita
                 text_id = text.get('id')
-                col_btn1, col_btn2, col_btn3 = st.columns(3)
+                col_text, col_actions = st.columns([2, 1])
 
-                with col_btn1:
+                # Coluna esquerda: texto do post
+                with col_text:
+                    st.text_area(
+                        "",
+                        value=content_text,
+                        height=200,
+                        label_visibility="collapsed",
+                        key=f"post_text_{text_id}_{i}"
+                    )
+
+                # Coluna direita: botões de ação
+                with col_actions:
                     if not is_approved and 'update' in permissions:
                         if st.button(
                             "✅ Aprovar",
                             key=f"approve_{text_id}_{i}",
-                            help="Aprovar & Gerar Embedding",
+                            help="Aprovar post",
                             use_container_width=True,
                             type="primary"
                         ):
@@ -1344,7 +853,7 @@ font-size: 0.9rem; color: #666;">
                         if st.button(
                             "❌ Reprovar",
                             key=f"reject_{text_id}_{i}",
-                            help="Reprovar",
+                            help="Reprovar post",
                             use_container_width=True,
                             type="secondary"
                         ):
@@ -1356,12 +865,11 @@ font-size: 0.9rem; color: #666;">
                             st.toast(result, icon="❌")
                             st.rerun()
 
-                with col_btn2:
                     if 'create' in permissions:
                         if st.button(
                             "🔄 Regenerar",
                             key=f"regenerate_{text_id}_{i}",
-                            help="Regenerar",
+                            help="Regenerar post",
                             use_container_width=True,
                             type="secondary"
                         ):
@@ -1374,55 +882,7 @@ font-size: 0.9rem; color: #666;">
                                 icon="🔄"
                             )
 
-                with col_btn3:
-                    # Botão para visualizar conteúdo
-                    if st.button(
-                        "👁️ Visualizar",
-                        key=f"view_{text_id}_{i}",
-                        help="Ver conteúdo completo",
-                        use_container_width=True,
-                        type="secondary"
-                    ):
-                        # Toggle do estado de visualização
-                        view_key = f"view_expanded_{text_id}"
-                        if view_key not in st.session_state:
-                            st.session_state[view_key] = False
-                        st.session_state[
-                            view_key
-                        ] = not st.session_state[view_key]
-
-                # Conteúdo expandido condicionalmente com animação
-                view_key = f"view_expanded_{text_id}"
-                if st.session_state.get(view_key, False):
-                    st.markdown("""
-                    <div style="
-                        background: #f8f9fa;
-                        padding: 1.5rem;
-                        border-radius: 10px;
-                        margin: 1rem 0;
-                        border: 1px solid #e9ecef;
-                        animation: fadeIn 0.5s ease-out;
-                    ">
-                        <h5 style="
-                            color: #333;
-                            margin: 0 0 1rem 0;
-                            font-weight: 600;
-                        ">
-                            📄 Conteúdo Completo do Post
-                        </h5>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    st.text_area(
-                        "",
-                        value=content_text,
-                        height=150,
-                        disabled=True,
-                        label_visibility="collapsed",
-                        key=f"full_{i}"
-                    )
-
-                    st.divider()
+                st.divider()
 
             # Estatísticas da listagem
             if filtered_texts:
@@ -1450,8 +910,7 @@ font-size: 0.9rem; color: #666;">
             st.warning("""
             **🔒 Acesso Restrito**
 
-            Você não possui permissão para visualizar posts.
-            Entre em contato com o administrador do sistema.
+            Sem permissão para visualizar posts.
             """)
 
     def update(self, token, menu_position, permissions):
@@ -1472,12 +931,12 @@ font-size: 0.9rem; color: #666;">
             texts = TextsRequest().get_texts(token)
 
             if not texts:
-                col4, col5, col6 = st.columns(3)
+                _, col5, _ = st.columns(3)
                 with col5:
                     st.info("""
                     **📄 Nenhum post encontrado**
 
-                    Não há posts disponíveis para edição.
+                    Não há posts para edição.
                     """)
                 return
 
@@ -1496,7 +955,7 @@ font-size: 0.9rem; color: #666;">
                 selected_text_display = st.selectbox(
                     "Escolha o post para editar:",
                     options=list(texts_options.keys()),
-                    help="Selecione um post da lista para editar"
+                    help="Selecione um post"
                 )
                 selected_text_id = texts_options[selected_text_display]
 
@@ -1513,7 +972,7 @@ font-size: 0.9rem; color: #666;">
                         label="🎯 Tema",
                         value=text_data['theme'],
                         max_chars=500,
-                        help="Atualize o tema do post",
+                        help="Tema do post",
                         height=100
                     )
 
@@ -1529,7 +988,7 @@ font-size: 0.9rem; color: #666;">
                         label="📊 Status",
                         options=list(status_options.values()),
                         index=0 if current_approval_status else 1,
-                        help="Atualize o status do post"
+                        help="Status do post"
                     )
 
                     # Converter de volta para o valor da API
@@ -1572,14 +1031,14 @@ font-size: 0.9rem; color: #666;">
                         new_topic)
 
                     if validated_topic and has_changes:
-                        col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+                        _, col_btn2, _ = st.columns([1, 2, 1])
 
                         with col_btn2:
                             confirm_button = st.button(
                                 "💾 Salvar Alterações",
                                 use_container_width=True,
                                 type="primary",
-                                help="Confirmar as alterações no post"
+                                help="Salvar alterações"
                             )
 
                             if confirm_button:
@@ -1616,7 +1075,6 @@ font-size: 0.9rem; color: #666;">
                         "Conteúdo completo do post:",
                         value=content_text,
                         height=400,
-                        disabled=True,
                         label_visibility="collapsed"
                     )
 
@@ -1624,8 +1082,7 @@ font-size: 0.9rem; color: #666;">
             st.warning("""
             **🔒 Acesso Restrito**
 
-            Você não possui permissão para atualizar posts.
-            Entre em contato com o administrador do sistema.
+            Sem permissão para atualizar posts.
             """)
 
     def main_menu(self, token, permissions):
@@ -1644,7 +1101,7 @@ font-size: 0.9rem; color: #666;">
         )
 
         # Cabeçalho principal mais limpo
-        col_header, col_menu, col_actions = st.columns([1, 1.2, 1])
+        _, col_menu, col_actions = st.columns([1, 1.2, 1])
 
         with col_menu:
             # Menu com ícones mais intuitivos
@@ -1668,7 +1125,7 @@ font-size: 0.9rem; color: #666;">
                 selected_option = st.selectbox(
                     label="Escolha uma ação:",
                     options=list(available_options.keys()),
-                    help="Selecione a operação que deseja realizar",
+                    help="Selecione uma opção",
                     label_visibility="collapsed"
                 )
             else:

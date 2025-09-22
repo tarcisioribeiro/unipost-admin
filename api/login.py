@@ -58,66 +58,31 @@ class Login:
             del st.session_state["token"]
 
         if "token" not in st.session_state:
-            # Cabeçalho principal simplificado
-            st.markdown("""
-            <div style="text-align: center; padding: 2rem 0;">
-                <h1 style="
-                    color: #1f77b4;
-                    font-size: 3rem;
-                    margin-bottom: 0.5rem;
-                    font-weight: 700;
-                ">
-                    🤖 UniPost
-                </h1>
-                <p style="
-                    color: #666;
-                    font-size: 1.1rem;
-                    margin-bottom: 2rem;
-                    font-weight: 300;
-                ">
-                    Gerador Inteligente de Posts com IA
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            # Cabeçalho principal
+            st.title("🤖 UniPost")
+            st.subheader("Gerador de Posts com IA")
+            st.divider()
 
             # Layout de login centralizado
             _, col2, _ = st.columns([1, 2, 1])
 
             with col2:
-                # Container de login limpo
-                st.markdown("""
-                <div style="
-                    background: linear-gradient(135deg, #667eea 0%, \
-#764ba2 100%);
-                    padding: 2rem;
-                    border-radius: 12px;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                    margin: 1rem 0;
-                ">
-                    <h3 style="
-                        color: white;
-                        text-align: center;
-                        margin-bottom: 1.5rem;
-                        font-weight: 500;
-                    ">
-                        🔑 Acesso Seguro
-                    </h3>
-                </div>
-                """, unsafe_allow_html=True)
+                # Container de login
+                st.header("🔑 Acesso Seguro")
 
                 # Formulário de login simplificado
                 with st.form("login_form", clear_on_submit=False):
 
                     username = st.text_input(
                         "👤 Usuário",
-                        placeholder="Digite seu nome de usuário",
-                        help="Entre com suas credenciais de acesso"
+                        placeholder="Digite seu usuário",
+                        help="Nome de usuário"
                     )
                     password = st.text_input(
                         "🔒 Senha",
                         type="password",
                         placeholder="Digite sua senha",
-                        help="Digite sua senha de acesso"
+                        help="Senha de acesso"
                     )
 
                     _, col_center, _ = st.columns([1, 1, 1])
@@ -154,27 +119,11 @@ class Login:
                                 else:
                                     st.toast("Credenciais inválidas", icon="❌")
 
-                # Rodapé simplificado
-                st.markdown("""
-                <div style="
-                    text-align: center;
-                    margin-top: 2rem;
-                    padding: 1rem;
-                    background-color: #f8f9fa;
-                    border-radius: 8px;
-                    border-left: 4px solid #667eea;
-                ">
-                    <p style="
-                        margin: 0;
-                        color: #666;
-                        font-size: 0.9rem;
-                    ">
-                        🤖 <strong>Melhorado por IA</strong> • 🔐 \
-<strong>Acesso Seguro</strong><br>
-                        <small>Entre em contato com o administrador \
-para obter acesso</small>
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
+                # Rodapé
+                st.info("""
+                🤖 **Melhorado por IA** • 🔐 **Acesso Seguro**
+
+                Contate o administrador para acesso
+                """)
         else:
             HomePage().main_menu()

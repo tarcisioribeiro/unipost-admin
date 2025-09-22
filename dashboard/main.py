@@ -42,13 +42,7 @@ class Dashboard:
             'is_superuser', False) if user_data else False
 
         if is_superuser:
-            st.error("""
-            **⚠️ Acesso Restrito para Superusuário**
-
-            O dashboard não está disponível para superusuários.
-            Esta funcionalidade é destinada apenas aos usuários regulares
-            que trabalham diretamente com a geração de textos.
-            """)
+            st.error("⚠️ Dashboard não disponível para superusuários")
             return
 
         # Verificar se tem permissões de texto usando formato Django
@@ -62,58 +56,18 @@ class Dashboard:
             perm in permissions for perm in django_text_permissions)
 
         if not has_text_permission:
-            st.warning("""
-            **🔒 Acesso Restrito**
-
-            Você não possui permissões relacionadas aos textos.
-            O dashboard está disponível apenas para usuários
-            com permissões de texto (ler, criar, editar ou excluir).
-
-            Entre em contato com o administrador do sistema.
-            """)
+            st.warning(
+                "🔒 Acesso restrito. Você não possui permissões de texto."
+            )
             return
 
-        # Cabeçalho do dashboard com estilo aprimorado
-        st.markdown("""
-        <div style="
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            padding: 2rem;
-            border-radius: 15px;
-            margin-bottom: 2rem;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        ">
-            <h1 style="
-                color: white;
-                margin: 0;
-                font-size: 2.5rem;
-                font-weight: 700;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-            ">
-                📊 Dashboard Analytics
-            </h1>
-            <p style="
-                color: rgba(255,255,255,0.9);
-                margin: 0.5rem 0 0 0;
-                font-size: 1.1rem;
-                font-weight: 300;
-            ">
-                Análise completa dos textos gerados por IA
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        # Cabeçalho do dashboard
+        st.header("📊 Dashboard Analytics")
 
         texts = TextsRequest().get_texts(token)
 
         if not texts:
-            col1, col2, col3 = st.columns(3)
-            with col2:
-                st.info("""
-                **📄 Nenhum texto encontrado**
-
-                Ainda não há textos para gerar estatísticas.
-                Que tal gerar seu primeiro texto usando IA?
-                """)
+            st.info("📄 Nenhum texto encontrado. Gere seu primeiro texto!")
             return
 
         # Preparar dados para análise
@@ -132,25 +86,8 @@ class Dashboard:
             }
         )
 
-        # Métricas principais com visual aprimorado
-        st.markdown("""
-        <div style="
-            background-color: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 10px;
-            margin: 1rem 0;
-            border-left: 4px solid #667eea;
-        ">
-            <h3 style="
-                color: #333;
-                margin: 0 0 1rem 0;
-                font-size: 1.4rem;
-                font-weight: 600;
-            ">
-                📈 Métricas Principais
-            </h3>
-        </div>
-        """, unsafe_allow_html=True)
+        # Métricas principais
+        st.markdown("### 📈 Métricas Principais")
 
         col1, col2, col3, col4 = st.columns(4)
 
@@ -159,26 +96,6 @@ class Dashboard:
             [t for t in texts if not t.get('is_approved', False)])
         approved_texts = len([t for t in texts if t.get('is_approved', False)])
         platforms_count = len(df['platform'].unique())
-
-        # Cartões de métricas estilizados
-        metrics_style = """
-        <style>
-        .metric-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            text-align: center;
-            margin: 0.5rem 0;
-            border-top: 3px solid;
-        }
-        .metric-card.total { border-top-color: #667eea; }
-        .metric-card.pending { border-top-color: #ffc107; }
-        .metric-card.approved { border-top-color: #28a745; }
-        .metric-card.platforms { border-top-color: #17a2b8; }
-        </style>
-        """
-        st.markdown(metrics_style, unsafe_allow_html=True)
 
         with col1:
             st.metric(
@@ -245,7 +162,7 @@ class Dashboard:
 
             fig_status.update_layout(
                 title=dict(
-                    text="Status Distribution",
+                    text="Distribuição por Status",
                     x=0.5,
                     font=dict(size=16, color='#333333', family="Courier New")
                 ),
@@ -296,7 +213,7 @@ class Dashboard:
 
             fig_platform.update_layout(
                 title=dict(
-                    text="Platform Distribution",
+                    text="Distribuição por Plataforma",
                     x=0.5,
                     font=dict(size=16, color='#333333', family="Courier New")
                 ),
@@ -318,25 +235,8 @@ class Dashboard:
 
             st.plotly_chart(fig_platform, use_container_width=True)
 
-        # Gráfico de linha temporal com estilo
-        st.markdown("""
-        <div style="
-            background-color: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 10px;
-            margin: 2rem 0 1rem 0;
-            border-left: 4px solid #667eea;
-        ">
-            <h3 style="
-                color: #333;
-                margin: 0;
-                font-size: 1.4rem;
-                font-weight: 600;
-            ">
-                📅 Evolução Temporal dos Textos
-            </h3>
-        </div>
-        """, unsafe_allow_html=True)
+        # Gráfico de linha temporal
+        st.markdown("### 📅 Evolução Temporal dos Textos")
 
         # Agrupar por mês
         monthly_data = df.groupby(
@@ -499,10 +399,7 @@ class Dashboard:
             top_platform_count = platform_data.iloc[0] if len(
                 platform_data) > 0 else 0
 
-            st.info(
-                f"""🏆 **Plataforma mais utilizada:** {
-                    top_platform
-                } ({top_platform_count} textos)""")
+            st.info(f"🏆 Mais usada: {top_platform} ({top_platform_count})")
 
             # Taxa de aprovação - exibir como métrica permanente
             approval_rate = (
@@ -517,8 +414,7 @@ class Dashboard:
             else:
                 icon = "📉"
 
-            st.info(
-                f"{icon} **Taxa de aprovação geral:** {approval_rate:.1f}%")
+            st.info(f"{icon} Aprovação: {approval_rate:.1f}%")
 
         with insights_col2:
             # Textos criados nos últimos 7 dias
@@ -527,12 +423,11 @@ class Dashboard:
                 t['created_at'][:10], '%Y-%m-%d') >= last_week])
 
             if recent_texts > 0:
-                st.info(
-                    f"📈 **Textos criados na última semana:** {recent_texts}")
+                st.info(f"📈 Última semana: {recent_texts} textos")
             else:
-                st.info("📊 **Nenhum texto criado na última semana**")
+                st.info("📊 Nenhum texto na última semana")
 
             # Média de textos por mês
             if len(monthly_data) > 0:
                 avg_per_month = total_texts / len(monthly_data)
-                st.info(f"📅 **Média por mês:** {int(avg_per_month)} textos")
+                st.info(f"📅 Média mensal: {int(avg_per_month)}")
