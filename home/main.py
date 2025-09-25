@@ -69,11 +69,7 @@ class HomePage:
                 st.success(f"👤 **{st.session_state.user_name}** (ativo)")
 
             # Navegação
-            st.info("🏠 Início > Menu Principal")
 
-            st.subheader("📋 Menu de Navegação")
-
-            # Menu com ícones melhorados
             selected_option = st.selectbox(
                 label="Selecione uma opção:",
                 options=list(menu_options.keys()),

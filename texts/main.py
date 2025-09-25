@@ -696,221 +696,266 @@ class Texts:
             texts = TextsRequest().get_texts(token)
 
             if not texts:
-                _, col5, _ = st.columns(3)
-                with col5:
+                st.empty()
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
                     st.info("""
-                    **📄 Nenhum post encontrado**
+                    **📄 Biblioteca Vazia**
 
-                    Que tal gerar seu primeiro post?
+                    Nenhum post foi encontrado. Que tal criar seu primeiro post?
 
-                    Vá para **Gerar post** no menu.
+                    👉 Vá para **"🚀 Gerar Novo Post"** no menu acima.
                     """)
                 return
 
-            # Filtros compactos
-            col_filter1, col_filter2, col_filter3 = st.columns([2, 2, 1])
+            # Cabeçalho da biblioteca
+            st.header("📚 Biblioteca de Posts")
+            st.caption("Gerencie e visualize todos os posts criados com IA")
+
+            # Barra de filtros melhorada
+            col_filter1, col_filter2, col_filter3, col_filter4 = st.columns([3, 2, 2, 1])
 
             with col_filter1:
                 search_text = st.text_input(
-                    "🔎 Buscar:",
-                    placeholder="Digite palavras-chave...",
-                    label_visibility="collapsed"
+                    "🔍 Buscar por tema ou conteúdo",
+                    placeholder="Digite palavras-chave para buscar...",
+                    help="Busque por tema ou conteúdo do post"
                 )
 
             with col_filter2:
                 status_filter = st.selectbox(
-                    "Status",
-                    ["Todos", "Aprovado", "Pendente"],
+                    "📊 Filtrar por Status",
+                    ["Todos", "✅ Aprovados", "⏳ Pendentes"],
                     index=0,
-                    label_visibility="collapsed"
+                    help="Filtrar posts por status de aprovação"
                 )
 
             with col_filter3:
-                st.metric("Total", len(texts))
+                sort_options = ["📅 Mais Recentes", "📅 Mais Antigos", "📝 Mais Palavras", "📝 Menos Palavras"]
+                sort_option = st.selectbox(
+                    "🔄 Ordenar por",
+                    sort_options,
+                    index=0,
+                    help="Escolha como ordenar os posts"
+                )
 
-            # Filtrar posts
+            with col_filter4:
+                posts_per_page = st.selectbox(
+                    "📄 Por página",
+                    [5, 10, 20, 50],
+                    index=1,
+                    help="Quantidade de posts por página"
+                )
+
+            # Aplicar filtros
             filtered_texts = texts
-            if status_filter != "Todos":
-                if status_filter == "Aprovado":
-                    filtered_texts = [
-                        t for t in filtered_texts if t.get(
-                            'is_approved', False)]
-                elif status_filter == "Pendente":
-                    filtered_texts = [
-                        t for t in filtered_texts if not t.get(
-                            'is_approved', False)]
+            if status_filter == "✅ Aprovados":
+                filtered_texts = [t for t in filtered_texts if t.get('is_approved', False)]
+            elif status_filter == "⏳ Pendentes":
+                filtered_texts = [t for t in filtered_texts if not t.get('is_approved', False)]
 
             if search_text:
+                search_lower = search_text.lower()
                 filtered_texts = [
-                    t for t in filtered_texts if search_text.lower() in t.get(
-                        'theme', '').lower()]
+                    t for t in filtered_texts
+                    if search_lower in t.get('theme', '').lower() or
+                       search_lower in t.get('content', t.get('generated_text', '')).lower()
+                ]
+
+            # Aplicar ordenação
+            if sort_option == "📅 Mais Antigos":
+                filtered_texts.sort(key=lambda x: x.get('created_at', ''), reverse=False)
+            elif sort_option == "📝 Mais Palavras":
+                filtered_texts.sort(key=lambda x: len(x.get('content', x.get('generated_text', '')).split()), reverse=True)
+            elif sort_option == "📝 Menos Palavras":
+                filtered_texts.sort(key=lambda x: len(x.get('content', x.get('generated_text', '')).split()), reverse=False)
+            else:  # Mais recentes (padrão)
+                filtered_texts.sort(key=lambda x: x.get('created_at', ''), reverse=True)
 
             if not filtered_texts:
-                st.toast("Nenhum post encontrado", icon="🔍")
+                st.info("🔍 Nenhum post encontrado com os filtros aplicados")
                 return
 
-            # Lista de posts com layout de 2 colunas
-            for i, text in enumerate(filtered_texts):
+            # Estatísticas resumidas
+            total_approved = len([t for t in filtered_texts if t.get('is_approved', False)])
+            total_pending = len(filtered_texts) - total_approved
+
+            col_stats1, col_stats2, col_stats3, col_stats4 = st.columns(4)
+            with col_stats1:
+                st.metric("📄 Total Encontrados", len(filtered_texts))
+            with col_stats2:
+                st.metric("✅ Aprovados", total_approved)
+            with col_stats3:
+                st.metric("⏳ Pendentes", total_pending)
+            with col_stats4:
+                approval_rate = (total_approved / len(filtered_texts) * 100) if filtered_texts else 0
+                st.metric("📊 Taxa Aprovação", f"{approval_rate:.0f}%")
+
+            st.divider()
+
+            # Paginação
+            total_posts = len(filtered_texts)
+            total_pages = (total_posts - 1) // posts_per_page + 1 if total_posts > 0 else 1
+
+            if total_pages > 1:
+                col_pagination1, col_pagination2, col_pagination3 = st.columns([1, 2, 1])
+                with col_pagination2:
+                    current_page = st.selectbox(
+                        f"📄 Página ({total_pages} páginas)",
+                        range(1, total_pages + 1),
+                        index=0,
+                        format_func=lambda x: f"Página {x} de {total_pages}"
+                    )
+            else:
+                current_page = 1
+
+            # Calcular posts da página atual
+            start_idx = (current_page - 1) * posts_per_page
+            end_idx = start_idx + posts_per_page
+            posts_to_show = filtered_texts[start_idx:end_idx]
+
+            # Exibir posts com design melhorado
+            for i, text in enumerate(posts_to_show):
                 is_approved = text.get('is_approved', False)
                 status_emoji = '✅' if is_approved else '⏳'
+                status_color = 'success' if is_approved else 'warning'
 
-                # Status e formatação
-                status_text_display = 'Aprovado' if is_approved else 'Pendente'
-                print(status_text_display)
-
-                # Formatação da data
+                # Formatação da data melhorada
                 created_date = text.get('created_at', 'N/A')
                 if created_date != 'N/A' and len(created_date) >= 10:
                     try:
                         from datetime import datetime
-                        date_obj = datetime.strptime(
-                            created_date[:10],
-                            '%Y-%m-%d'
-                        )
-                        br_date = date_obj.strftime('%d/%m')
+                        date_obj = datetime.strptime(created_date[:10], '%Y-%m-%d')
+                        formatted_date = date_obj.strftime('%d/%m/%Y')
+                        time_part = created_date[11:16] if len(created_date) > 16 else ''
+                        full_date = f"{formatted_date} {time_part}".strip()
                     except Exception:
-                        br_date = created_date[8:10] + '/' + created_date[5:7]
+                        full_date = created_date[:16] if len(created_date) >= 16 else created_date
                 else:
-                    br_date = '--'
+                    full_date = 'Data não disponível'
 
                 theme_display = text.get('theme', 'Sem título')
-                content_text = text.get(
-                    'content',
-                    text.get('generated_text', '')
-                )
+                content_text = text.get('content', text.get('generated_text', ''))
                 word_count = len(content_text.split()) if content_text else 0
+                char_count = len(content_text) if content_text else 0
+                platform_name = PLATFORMS.get(text.get('platform', 'N/A'), 'Genérico')
 
-                # Card com informações do post
-                if is_approved:
-                    st.success(f"""
-                    {
-                        status_emoji
-                    } **{theme_display[:80]}{'...' if len(
-                        theme_display
-                    ) > 80 else ''}**
+                # Preview do conteúdo (primeiras 150 caracteres)
+                content_preview = content_text[:150] + "..." if len(content_text) > 150 else content_text
 
-                    📅 {
-                        br_date
-                    } • 📱 {
-                        PLATFORMS.get(text.get('platform', 'N/A'), 'Genérico')
-                    } • 📝 {word_count} palavras
-                    """)
-                else:
-                    st.warning(f"""
-                    {
-                        status_emoji
-                    } **{
-                        theme_display[:80]
-                    }{'...' if len(theme_display) > 80 else ''}**
-
-                    📅 {
-                        br_date
-                    } • 📱 {
-                        PLATFORMS.get(text.get('platform', 'N/A'), 'Genérico')
-                    } • 📝 {word_count} palavras
-                    """)
-
-                # Layout de 2 colunas: texto à esquerda, botões à direita
+                # Container principal do post com design de card
                 text_id = text.get('id')
-                col_text, col_actions = st.columns([2, 1])
 
-                # Coluna esquerda: texto do post
-                with col_text:
-                    st.text_area(
-                        "",
-                        value=content_text,
-                        height=200,
-                        label_visibility="collapsed",
-                        key=f"post_text_{text_id}_{i}"
-                    )
+                # Usar container com borda
+                with st.container():
+                    # Cabeçalho do card
+                    col_header, col_status = st.columns([4, 1])
 
-                # Coluna direita: botões de ação
-                with col_actions:
-                    if not is_approved and 'update' in permissions:
-                        if st.button(
-                            "✅ Aprovar",
-                            key=f"approve_{text_id}_{i}",
-                            help="Aprovar post",
-                            use_container_width=True,
-                            type="primary"
-                        ):
-                            with st.spinner(
-                                "Aprovando e gerando embedding..."
-                            ):
-                                text_content = text.get('content', '')
-                                text_theme = text.get('theme', '')
-                                result = \
-                                    TextsRequest().\
-                                    approve_and_generate_embedding(
-                                        token,
-                                        text_id,
-                                        text_content,
-                                        text_theme
-                                    )
-                            st.toast(result, icon="✅")
-                            st.rerun()
-                    elif is_approved and 'update' in permissions:
-                        if st.button(
-                            "❌ Reprovar",
-                            key=f"reject_{text_id}_{i}",
-                            help="Reprovar post",
-                            use_container_width=True,
-                            type="secondary"
-                        ):
-                            with st.spinner("Reprovando..."):
-                                result = TextsRequest().reject_text(
-                                    token,
-                                    text_id
-                                )
-                            st.toast(result, icon="❌")
-                            st.rerun()
+                    with col_header:
+                        st.markdown(f"### {status_emoji} {theme_display}")
 
-                    if 'create' in permissions:
-                        if st.button(
-                            "🔄 Regenerar",
-                            key=f"regenerate_{text_id}_{i}",
-                            help="Regenerar post",
-                            use_container_width=True,
-                            type="secondary"
-                        ):
-                            st.session_state.regenerate_text_data = {
-                                'theme': text.get('theme', ''),
-                                'original_id': text_id
-                            }
-                            st.toast(
-                                "Carregado para regeneração",
-                                icon="🔄"
+                    with col_status:
+                        if is_approved:
+                            st.success("Aprovado")
+                        else:
+                            st.warning("Pendente")
+
+                    # Informações do post
+                    col_info1, col_info2, col_info3, col_info4 = st.columns(4)
+
+                    with col_info1:
+                        st.metric("📅 Data", full_date[:10])
+
+                    with col_info2:
+                        st.metric("📱 Plataforma", platform_name)
+
+                    with col_info3:
+                        st.metric("📝 Palavras", word_count)
+
+                    with col_info4:
+                        st.metric("📊 Caracteres", char_count)
+
+                    # Preview do conteúdo
+                    st.markdown("**📄 Preview do Conteúdo:**")
+                    st.markdown(f"*{content_preview}*")
+
+                    # Layout de ações
+                    col_text, col_actions = st.columns([3, 1])
+
+                    # Coluna esquerda: visualização completa do texto
+                    with col_text:
+                        with st.expander("👁️ Ver Texto Completo", expanded=False):
+                            st.text_area(
+                                "Conteúdo completo do post:",
+                                value=content_text,
+                                height=250,
+                                label_visibility="collapsed",
+                                key=f"post_text_{text_id}_{i}_{current_page}"
                             )
 
-                st.divider()
+                    # Coluna direita: botões de ação
+                    with col_actions:
+                        st.markdown("**🎛️ Ações:**")
 
-            # Estatísticas da listagem
-            if filtered_texts:
-                total_approved = len(
-                    [t for t in filtered_texts if t.get('is_approved', False)]
-                )
-                total_pending = len(filtered_texts) - total_approved
+                        if not is_approved and 'update' in permissions:
+                            if st.button(
+                                "✅ Aprovar",
+                                key=f"approve_{text_id}_{i}_{current_page}",
+                                help="Aprovar este post",
+                                use_container_width=True,
+                                type="primary"
+                            ):
+                                with st.spinner("Aprovando post..."):
+                                    text_content = text.get('content', '')
+                                    text_theme = text.get('theme', '')
+                                    result = TextsRequest().approve_and_generate_embedding(
+                                        token, text_id, text_content, text_theme
+                                    )
+                                st.toast(result, icon="✅")
+                                st.rerun()
 
-                col_stats1, col_stats2, col_stats3, col_stats4 = st.columns(4)
-                with col_stats1:
-                    st.metric("Total Filtrados", len(filtered_texts))
-                with col_stats2:
-                    st.metric("Aprovados", total_approved)
-                with col_stats3:
-                    st.metric("Pendentes", total_pending)
-                with col_stats4:
-                    approval_rate = (
-                        total_approved / len(
-                            filtered_texts
-                        ) * 100
-                    ) if filtered_texts else 0
-                    st.metric("Taxa Aprovação", f"{approval_rate:.0f}%")
+                        elif is_approved and 'update' in permissions:
+                            if st.button(
+                                "❌ Reprovar",
+                                key=f"reject_{text_id}_{i}_{current_page}",
+                                help="Reprovar este post",
+                                use_container_width=True,
+                                type="secondary"
+                            ):
+                                with st.spinner("Reprovando post..."):
+                                    result = TextsRequest().reject_text(token, text_id)
+                                st.toast(result, icon="❌")
+                                st.rerun()
+
+                        if 'create' in permissions:
+                            if st.button(
+                                "🔄 Regenerar",
+                                key=f"regenerate_{text_id}_{i}_{current_page}",
+                                help="Regenerar post baseado neste tema",
+                                use_container_width=True,
+                                type="secondary"
+                            ):
+                                st.session_state.regenerate_text_data = {
+                                    'theme': text.get('theme', ''),
+                                    'original_id': text_id
+                                }
+                                st.toast("Tema carregado para regeneração!", icon="🔄")
+                                st.switch_page("🚀 Gerar Novo Post")
+
+                    st.divider()
+
+            # Navegação de páginas no final
+            if total_pages > 1:
+                col_nav1, col_nav2, col_nav3 = st.columns([1, 2, 1])
+                with col_nav2:
+                    st.info(f"📄 Mostrando posts {start_idx + 1} a {min(end_idx, total_posts)} de {total_posts}")
 
         elif 'read' not in permissions:
-            st.warning("""
+            st.error("""
             **🔒 Acesso Restrito**
 
-            Sem permissão para visualizar posts.
+            Você não possui permissão para visualizar posts.
+            Entre em contato com o administrador para solicitar acesso.
             """)
 
     def update(self, token, menu_position, permissions):
